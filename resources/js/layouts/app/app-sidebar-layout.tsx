@@ -1,20 +1,29 @@
-import { AppContent } from '@/components/app-content';
-import { AppShell } from '@/components/app-shell';
-import { AppSidebar } from '@/components/app-sidebar';
-import { AppSidebarHeader } from '@/components/app-sidebar-header';
+import { useState } from 'react';
+import { TemplateHeader } from '@/components/template-header';
+import { TemplateMobileNav } from '@/components/template-mobile-nav';
+import { TemplateSidebar } from '@/components/template-sidebar';
 import type { AppLayoutProps } from '@/types';
 
 export default function AppSidebarLayout({
     children,
     breadcrumbs = [],
 }: AppLayoutProps) {
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
     return (
-        <AppShell variant="sidebar">
-            <AppSidebar />
-            <AppContent variant="sidebar" className="overflow-x-hidden">
-                <AppSidebarHeader breadcrumbs={breadcrumbs} />
-                {children}
-            </AppContent>
-        </AppShell>
+        <div className="min-h-screen bg-background">
+            <TemplateSidebar />
+            <TemplateMobileNav
+                open={mobileMenuOpen}
+                onOpenChange={setMobileMenuOpen}
+            />
+            <main className="md:ml-64">
+                <TemplateHeader
+                    breadcrumbs={breadcrumbs}
+                    onMenuClick={() => setMobileMenuOpen(true)}
+                />
+                <div className="p-4 md:p-6">{children}</div>
+            </main>
+        </div>
     );
 }

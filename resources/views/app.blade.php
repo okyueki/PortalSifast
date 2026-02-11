@@ -22,11 +22,11 @@
         {{-- Inline style to set the HTML background color based on our theme in app.css --}}
         <style>
             html {
-                background: linear-gradient(160deg, oklch(0.98 0.02 300) 0%, oklch(0.96 0.04 280) 50%, oklch(0.97 0.03 260) 100%);
+                background: oklch(0.97 0.01 250);
             }
 
             html.dark {
-                background: linear-gradient(160deg, oklch(0.18 0.04 280) 0%, oklch(0.16 0.05 260) 100%);
+                background: oklch(0.16 0.03 260);
             }
         </style>
 
@@ -37,7 +37,7 @@
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700|instrument-sans:400,500,600" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700" rel="stylesheet" />
 
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx'])

@@ -128,7 +128,7 @@ export default function UsersCreate({ availablePegawai }: Props) {
                             type="email"
                             value={data.email}
                             onChange={(e) => setData('email', e.target.value)}
-                            placeholder="email@contoh.com"
+                            placeholder="email@example.com"
                             autoComplete="email"
                             required
                         />
