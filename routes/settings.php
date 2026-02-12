@@ -3,6 +3,7 @@
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SyncUsersController;
+use App\Http\Controllers\Settings\TicketSettingsController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -32,4 +33,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');
+
+    // Ticket Settings (Master Data)
+    Route::get('settings/tickets', [TicketSettingsController::class, 'index'])->name('settings.tickets');
+
+    // Ticket Types
+    Route::post('settings/ticket-types', [TicketSettingsController::class, 'storeType'])->name('settings.ticket-types.store');
+    Route::put('settings/ticket-types/{type}', [TicketSettingsController::class, 'updateType'])->name('settings.ticket-types.update');
+    Route::delete('settings/ticket-types/{type}', [TicketSettingsController::class, 'destroyType'])->name('settings.ticket-types.destroy');
+
+    // Ticket Categories
+    Route::post('settings/ticket-categories', [TicketSettingsController::class, 'storeCategory'])->name('settings.ticket-categories.store');
+    Route::put('settings/ticket-categories/{category}', [TicketSettingsController::class, 'updateCategory'])->name('settings.ticket-categories.update');
+    Route::delete('settings/ticket-categories/{category}', [TicketSettingsController::class, 'destroyCategory'])->name('settings.ticket-categories.destroy');
+
+    // Ticket Priorities
+    Route::post('settings/ticket-priorities', [TicketSettingsController::class, 'storePriority'])->name('settings.ticket-priorities.store');
+    Route::put('settings/ticket-priorities/{priority}', [TicketSettingsController::class, 'updatePriority'])->name('settings.ticket-priorities.update');
+    Route::delete('settings/ticket-priorities/{priority}', [TicketSettingsController::class, 'destroyPriority'])->name('settings.ticket-priorities.destroy');
+
+    // Ticket Statuses
+    Route::post('settings/ticket-statuses', [TicketSettingsController::class, 'storeStatus'])->name('settings.ticket-statuses.store');
+    Route::put('settings/ticket-statuses/{status}', [TicketSettingsController::class, 'updateStatus'])->name('settings.ticket-statuses.update');
+    Route::delete('settings/ticket-statuses/{status}', [TicketSettingsController::class, 'destroyStatus'])->name('settings.ticket-statuses.destroy');
 });

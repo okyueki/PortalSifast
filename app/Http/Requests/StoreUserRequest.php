@@ -26,6 +26,8 @@ class StoreUserRequest extends FormRequest
             'password' => $this->passwordRules(),
             'phone' => ['nullable', 'string', 'max:20'],
             'simrs_nik' => ['nullable', 'string', 'max:50'],
+            'role' => ['required', 'string', 'in:admin,staff,pemohon'],
+            'dep_id' => ['nullable', 'string', 'max:50'],
         ];
     }
 

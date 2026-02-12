@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Models\Pegawai;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -63,8 +64,18 @@ class UsersController extends Controller
             ->values()
             ->all();
 
+        try {
+            $departments = \App\Models\Departemen::orderBy('nama')->get(['dep_id', 'nama']);
+        } catch (\Throwable) {
+            $departments = collect([
+                ['dep_id' => 'IT', 'nama' => 'IT'],
+                ['dep_id' => 'IPS', 'nama' => 'IPS'],
+            ]);
+        }
+
         return Inertia::render('users/create', [
             'availablePegawai' => $availablePegawai,
+            'departments' => $departments,
         ]);
     }
 
@@ -77,8 +88,46 @@ class UsersController extends Controller
             'phone' => $request->validated('phone'),
             'simrs_nik' => $request->validated('simrs_nik'),
             'source' => $request->validated('simrs_nik') ? 'simrs' : 'manual',
+            'role' => $request->validated('role'),
+            'dep_id' => $request->validated('dep_id') ?: null,
         ]);
 
         return redirect()->route('users.index')->with('success', 'User berhasil ditambahkan.');
+    }
+
+    public function edit(User $user): Response
+    {
+        try {
+            $departments = \App\Models\Departemen::orderBy('nama')->get(['dep_id', 'nama']);
+        } catch (\Throwable) {
+            $departments = collect([
+                ['dep_id' => 'IT', 'nama' => 'IT'],
+                ['dep_id' => 'IPS', 'nama' => 'IPS'],
+            ]);
+        }
+
+        return Inertia::render('users/edit', [
+            'user' => $user->only(['id', 'name', 'email', 'phone', 'role', 'dep_id']),
+            'departments' => $departments,
+        ]);
+    }
+
+    public function update(UpdateUserRequest $request, User $user): RedirectResponse
+    {
+        $data = [
+            'name' => $request->validated('name'),
+            'email' => $request->validated('email'),
+            'phone' => $request->validated('phone'),
+            'role' => $request->validated('role'),
+            'dep_id' => $request->validated('dep_id') ?: null,
+        ];
+
+        if ($request->filled('password')) {
+            $data['password'] = $request->validated('password');
+        }
+
+        $user->update($data);
+
+        return redirect()->route('users.index')->with('success', 'User berhasil diperbarui.');
     }
 }

@@ -1,4 +1,5 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
+import { EmptyState } from '@/components/empty-state';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,8 @@ type UserItem = {
     phone: string | null;
     simrs_nik: string | null;
     source: string | null;
+    role: string;
+    dep_id: string | null;
     created_at: string;
 };
 
@@ -35,8 +38,6 @@ type Props = {
 };
 
 export default function UsersIndex({ users }: Props) {
-    const { flash } = usePage<{ flash: { success?: string } }>().props;
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Daftar User" />
@@ -51,12 +52,6 @@ export default function UsersIndex({ users }: Props) {
                         <Link href="/users/create">Tambah User</Link>
                     </Button>
                 </div>
-
-                {flash?.success && (
-                    <p className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
-                        {flash.success}
-                    </p>
-                )}
 
                 <div className="rounded-2xl border border-border/80 bg-card shadow-sm">
                     <div className="overflow-x-auto">
@@ -76,18 +71,32 @@ export default function UsersIndex({ users }: Props) {
                                         No. HP
                                     </th>
                                     <th className="px-4 py-3 font-medium">
+                                        Role
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Dep
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
                                         Sumber
+                                    </th>
+                                    <th className="px-4 py-3 font-medium">
+                                        Aksi
                                     </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {users.data.length === 0 ? (
                                     <tr>
-                                        <td
-                                            colSpan={5}
-                                            className="px-4 py-8 text-center text-muted-foreground"
-                                        >
-                                            Belum ada user.
+                                        <td colSpan={8} className="p-0">
+                                            <EmptyState
+                                                title="Belum ada user"
+                                                description="Tambahkan user baru untuk mengakses aplikasi."
+                                                action={
+                                                    <Link href="/users/create">
+                                                        <Button>Tambah User</Button>
+                                                    </Link>
+                                                }
+                                            />
                                         </td>
                                     </tr>
                                 ) : (
@@ -112,6 +121,23 @@ export default function UsersIndex({ users }: Props) {
                                                 <Badge
                                                     variant="outline"
                                                     className={
+                                                        user.role === 'admin'
+                                                            ? 'border-amber-400/60 bg-amber-500/15 text-amber-700 dark:border-amber-500/50 dark:bg-amber-500/25 dark:text-amber-300'
+                                                            : user.role === 'staff'
+                                                              ? 'border-blue-400/60 bg-blue-500/15 text-blue-700 dark:border-blue-500/50 dark:bg-blue-500/25 dark:text-blue-300'
+                                                              : 'border-slate-400/60 bg-slate-500/10 text-slate-700 dark:border-slate-500/50 dark:bg-slate-500/20 dark:text-slate-300'
+                                                    }
+                                                >
+                                                    {user.role}
+                                                </Badge>
+                                            </td>
+                                            <td className="px-4 py-3 text-muted-foreground">
+                                                {user.dep_id ?? '–'}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <Badge
+                                                    variant="outline"
+                                                    className={
                                                         user.source === 'simrs'
                                                             ? 'border-violet-400/60 bg-violet-500/15 text-violet-700 dark:border-violet-500/50 dark:bg-violet-500/25 dark:text-violet-300'
                                                             : 'border-slate-400/60 bg-slate-500/10 text-slate-700 dark:border-slate-500/50 dark:bg-slate-500/20 dark:text-slate-300'
@@ -119,6 +145,13 @@ export default function UsersIndex({ users }: Props) {
                                                 >
                                                     {user.source ?? 'manual'}
                                                 </Badge>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <Button size="sm" variant="outline" asChild>
+                                                    <Link href={`/users/${user.id}/edit`}>
+                                                        Edit
+                                                    </Link>
+                                                </Button>
                                             </td>
                                         </tr>
                                     ))

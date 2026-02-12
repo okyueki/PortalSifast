@@ -22,7 +22,7 @@ export default function AuthSimpleLayout({
                         <span className="sr-only">{title}</span>
                     </Link>
                     <h1 className="mt-4 text-2xl font-bold text-foreground">
-                        Sika
+                        Portal RS Aisyiyah Siti Fatimah
                     </h1>
                     <p className="mt-1 text-sm text-muted-foreground">
                         {description}

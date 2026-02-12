@@ -1,6 +1,15 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\InventarisController;
 use App\Http\Controllers\PegawaiController;
+use App\Http\Controllers\SlaReportController;
+use App\Http\Controllers\TicketAttachmentController;
+use App\Http\Controllers\TicketCollaboratorController;
+use App\Http\Controllers\TicketCommentController;
+use App\Http\Controllers\TicketController;
+use App\Http\Controllers\TicketSparepartItemController;
+use App\Http\Controllers\TicketVendorCostController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -12,15 +21,53 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-Route::get('dashboard', function () {
-    return Inertia::render('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('dashboard', DashboardController::class)
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('users', [UsersController::class, 'index'])->name('users.index');
     Route::get('users/create', [UsersController::class, 'create'])->name('users.create');
     Route::post('users', [UsersController::class, 'store'])->name('users.store');
+    Route::get('users/{user}/edit', [UsersController::class, 'edit'])->name('users.edit');
+    Route::put('users/{user}', [UsersController::class, 'update'])->name('users.update');
     Route::get('pegawai', [PegawaiController::class, 'index'])->name('pegawai.index');
+    Route::get('reports/sla', SlaReportController::class)->name('reports.sla');
+
+    // Inventaris CRUD
+    Route::resource('inventaris', InventarisController::class)->parameters(['inventaris' => 'inventaris:no_inventaris']);
+
+    // Ticket routes
+    Route::get('tickets/search-for-link', [TicketController::class, 'searchForLink'])->name('tickets.search-for-link');
+    Route::get('tickets/search-for-inventaris', [TicketController::class, 'searchForInventaris'])->name('tickets.search-for-inventaris');
+    Route::get('tickets/export', [TicketController::class, 'export'])->name('tickets.export');
+    Route::resource('tickets', TicketController::class);
+    Route::post('tickets/{ticket}/assign-self', [TicketController::class, 'assignToSelf'])->name('tickets.assign-self');
+    Route::post('tickets/{ticket}/close', [TicketController::class, 'close'])->name('tickets.close');
+    Route::post('tickets/{ticket}/confirm', [TicketController::class, 'confirm'])->name('tickets.confirm');
+    Route::post('tickets/{ticket}/complain', [TicketController::class, 'complain'])->name('tickets.complain');
+
+    // Ticket comments
+    Route::post('tickets/{ticket}/comments', [TicketCommentController::class, 'store'])->name('tickets.comments.store');
+    Route::delete('tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'destroy'])->name('tickets.comments.destroy');
+
+    // Ticket attachments
+    Route::post('tickets/{ticket}/attachments', [TicketAttachmentController::class, 'store'])->name('tickets.attachments.store');
+    Route::delete('tickets/{ticket}/attachments/{attachment}', [TicketAttachmentController::class, 'destroy'])->name('tickets.attachments.destroy');
+
+    // Ticket collaborators (rekan)
+    Route::post('tickets/{ticket}/collaborators', [TicketCollaboratorController::class, 'store'])->name('tickets.collaborators.store');
+    Route::delete('tickets/{ticket}/collaborators/{collaborator}', [TicketCollaboratorController::class, 'destroy'])->name('tickets.collaborators.destroy');
+
+    // Ticket vendor costs
+    Route::post('tickets/{ticket}/vendor-costs', [TicketVendorCostController::class, 'store'])->name('tickets.vendor-costs.store');
+    Route::patch('tickets/{ticket}/vendor-costs/{vendorCost}', [TicketVendorCostController::class, 'update'])->name('tickets.vendor-costs.update');
+    Route::delete('tickets/{ticket}/vendor-costs/{vendorCost}', [TicketVendorCostController::class, 'destroy'])->name('tickets.vendor-costs.destroy');
+
+    // Ticket spare part (perbaikan sendiri)
+    Route::post('tickets/{ticket}/sparepart-items', [TicketSparepartItemController::class, 'store'])->name('tickets.sparepart-items.store');
+    Route::patch('tickets/{ticket}/sparepart-items/{sparepartItem}', [TicketSparepartItemController::class, 'update'])->name('tickets.sparepart-items.update');
+    Route::delete('tickets/{ticket}/sparepart-items/{sparepartItem}', [TicketSparepartItemController::class, 'destroy'])->name('tickets.sparepart-items.destroy');
 });
 
 require __DIR__.'/settings.php';

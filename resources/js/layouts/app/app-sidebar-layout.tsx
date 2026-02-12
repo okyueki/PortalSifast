@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FlashMessage } from '@/components/flash-message';
 import { TemplateHeader } from '@/components/template-header';
 import { TemplateMobileNav } from '@/components/template-mobile-nav';
 import { TemplateSidebar } from '@/components/template-sidebar';
@@ -12,6 +13,7 @@ export default function AppSidebarLayout({
 
     return (
         <div className="min-h-screen bg-background">
+            <FlashMessage />
             <TemplateSidebar />
             <TemplateMobileNav
                 open={mobileMenuOpen}

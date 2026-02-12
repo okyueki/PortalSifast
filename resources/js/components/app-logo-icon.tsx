@@ -1,7 +1,7 @@
 import type { SVGAttributes } from 'react';
 
 /**
- * Sika logo mark – stylized "S" for branding.
+ * Portal RS Aisyiyah Siti Fatimah logo mark – stylized "S" for branding.
  */
 export default function AppLogoIcon(props: SVGAttributes<SVGElement>) {
     return (

@@ -224,14 +224,74 @@ Agar satu bahasa dengan standar, berikut pemetaan praktik ITIL v4 ke fitur siste
 - **Daftar tiket:** Tabel dengan filter (status, tipe, prioritas, departemen, penanggung jawab, tanggal). Tampilan “Tiket ditugaskan ke saya” vs “Tiket departemen saya”.
 - **Detail tiket:** Header + **satu penanggung jawab utama (primary)** + timeline komentar + lampiran. Untuk tiket gabungan (Agus IPS + Anwar IT), rekan bisa dicatat di komentar.
 - **Ubah tiket:** Ubah status, **ganti penanggung jawab** (satu user primary), tambah komentar/lampiran.
-- **Alur dasar:** Baru → Ditugaskan → Dikerjakan → Selesai → Ditutup (bisa ada status Tertunda di tengah).
+- **Alur status lengkap:** Baru → Ditugaskan → Dikerjakan → (Tertunda) → Selesai → Menunggu Konfirmasi → Ditutup
+  - Status "Menunggu Konfirmasi": pemohon verifikasi, atau auto-close setelah 3 hari
+  - Teknisi juga bisa langsung tutup jika perlu
+
+#### Eskalasi Tiket
+
+**Tidak pakai kolom eskalasi** karena tim masih kecil. Jika tiket stuck atau assignee tidak bisa menyelesaikan:
+- **Assign ulang** ke staff lain di departemen yang sama
+- Atau eskalasi manual ke admin/Head IT untuk ditugaskan ulang
+
+#### Konfirmasi Penutupan (Requester Satisfaction)
+
+Sesuai ITIL, pemohon sebaiknya mengkonfirmasi sebelum tiket benar-benar ditutup:
+1. Setelah teknisi set status "Selesai", tiket masuk **"Menunggu Konfirmasi"**
+2. Pemohon bisa:
+   - **Konfirmasi** → status menjadi "Ditutup"
+   - **Komplain** → status kembali ke "Dikerjakan" dengan catatan
+3. Jika **3 hari tidak ada respons**, tiket **auto-close**
+4. **Teknisi juga bisa langsung menutup** tiket tanpa menunggu konfirmasi (untuk kasus tertentu)
+
+#### Reopen Tiket
+
+**Tidak diizinkan reopen tiket yang sudah ditutup.** Alasannya:
+- Menjaga integritas data dan SLA
+- Memudahkan analisa masalah berulang
+
+Jika masalah yang sama muncul lagi setelah tiket ditutup:
+- **Buat tiket baru**
+- Isi field `related_ticket_id` dengan referensi ke tiket sebelumnya
+- Sistem bisa menampilkan riwayat tiket terkait di halaman detail
+
+#### Activity Log / Audit Trail
+
+Semua perubahan penting tercatat otomatis di tabel `ticket_activities`:
+- Perubahan status
+- Perubahan assignee
+- Perubahan prioritas
+- Komentar ditambahkan
+- Lampiran diunggah
+- Tiket dibuat / ditutup
+
+**Kegunaan:**
+- Audit trail untuk akuntabilitas
+- Laporan produktivitas
+- Analisa bottleneck
+- Bukti SLA compliance
 
 ### 5.3 Penugasan & Notifikasi (fase 1–2)
 
 - Penugasan **satu penanggung jawab utama (primary)** per tiket — field `assignee_id` di `tickets` (atau satu baris di tabel penugasan). Tidak pakai collaborator. Tiket gabungan (dua orang beda departemen): satu sebagai primary, rekan dicatat di komentar.
 - Penugasan ke user yang departemennya sesuai (dari tabel `departemen` via Pegawai/User); User punya **dep_id** untuk filter “tiket departemen saya”.
 - Notifikasi dasar: tiket baru, tiket ditugaskan ke saya, ada komentar baru (email dan/atau in-app).
+#### Model Penugasan (Semi Bebas)
 
+Sistem menggunakan model **semi bebas (semi-open assignment)**:
+
+1. **Tiket baru** masuk dengan status "Baru"
+2. **Tiket boleh belum memiliki penanggung jawab** (`assignee_id` kosong / unassigned pool)
+3. **Staff** dapat:
+   - Mengambil tiket departemennya sendiri (assign ke diri sendiri)
+4. **Admin / Head IT** dapat:
+   - Menetapkan atau mengubah penugasan ke siapa saja
+5. **Semua perubahan penugasan** tercatat dalam timeline tiket
+
+**Alasan model ini dipilih:**
+- Menghindari bottleneck di satu orang
+- Memberikan fleksibilitas pada tim kecil
+- Tetap menjaga akuntabilitas melalui satu primary assignee
 **Poin diskusi:** Notifikasi pertama mau lewat apa dulu? Email saja, atau ada Telegram/WhatsApp?
 
 ### 5.4 Laporan & SLA (fase 2–3)
@@ -239,6 +299,41 @@ Agar satu bahasa dengan standar, berikut pemetaan praktik ITIL v4 ke fitur siste
 - Dashboard: tiket per status, per prioritas, per **departemen** (IT, IPS, dll.), yang melewati batas waktu.
 - Pemenuhan SLA: waktu tanggap & selesai vs target (realistis untuk tim kecil).
 - Laporan sederhana: jumlah per kategori, per departemen, per penanggung jawab, tren bulanan.
+
+### 5.5 Penegasan Kategori Pengembangan
+
+Kategori dengan **`is_development = true`** diperlakukan sebagai tiket pengembangan/proyek dan memiliki aturan berbeda:
+
+- **Due date ditentukan oleh Head IT** (bukan pemohon)
+- **Tidak mengikuti SLA** response/resolution seperti insiden
+- **Dapat dilaporkan terpisah** dari tiket support rutin
+
+Contoh kategori: "Pengembangan Aplikasi", "Proyek Pengembangan", "Request Fitur Baru".
+
+### 5.6 Tracking Vendor & Biaya Perbaikan (Fase 2)
+
+Untuk tiket yang melibatkan **vendor pihak ketiga** atau **penggantian komponen**, sistem akan mendukung pencatatan:
+
+| Data | Keterangan |
+|------|------------|
+| Nama vendor | Vendor yang terlibat dalam perbaikan |
+| Estimasi biaya | Perkiraan biaya sebelum perbaikan |
+| Biaya realisasi | Biaya aktual setelah selesai |
+| Catatan sparepart | Komponen yang diganti |
+| Catatan vendor | Informasi tambahan pekerjaan vendor |
+
+**Berlaku untuk:**
+- Perbaikan alat medis
+- Perbaikan sarana prasarana
+- Penggantian komponen kecil (mouse, keyboard, SSD, RAM, dll.)
+
+**Kegunaan data ini:**
+- Laporan biaya tahunan IT dan IPS
+- Evaluasi vendor
+- Analisa peralatan yang sering rusak (reliability analysis)
+- Dasar perencanaan anggaran dan pengadaan
+
+**Dengan fitur ini**, sistem tidak hanya menjadi alat workflow, tetapi juga **alat kontrol biaya** dan **pengambilan keputusan manajerial**.
 
 ---
 
@@ -318,19 +413,41 @@ Master (departemen dari SIMRS, tipe, kategori, prioritas, status)
 
 ---
 
-## 9. Langkah Selanjutnya (Setelah Diskusi)
+## 9. Status Implementasi & Langkah Selanjutnya
 
-1. **Sepakati cakupan fase 1** — MVP: Insiden + Permintaan Layanan + **departemen IT & IPS** (dari tabel `departemen`) + master + **satu assignee primary** per tiket + SLA dasar. Due date pengembangan = **Head IT**.
-2. **Finalisasi master** — Daftar kategori per **dep_id** (IT vs IPS) dan subkategori jika dipakai; siapa yang merawat daftar ini.
-3. **Mulai implementasi** — Pakai **tabel `departemen`** (SIMRS) untuk divisi; migrasi master ticketing; **perluas User (role, dep_id)**; tabel **tickets** (assignee_id, dep_id) + comments + attachments; frontend daftar (filter departemen & “tiket saya”) + form buat + detail (satu penanggung jawab; tiket gabungan: rekan di komentar).
+### ✅ Sudah Selesai (Februari 2025)
 
-**Keputusan yang sudah masuk dokumen:**
+**Fase 1 (MVP):** Core CRUD, komentar, lampiran, penugasan, SLA dasar, due date pengembangan, Policy, notifikasi email+database, konfirmasi penutupan, auto-close.
+
+**Fase 3 (sebagian):** Dashboard statistik, Export CSV, Related Ticket UI.
+
+**Fase 2 (Feb 2025):** Fitur Rekan (kolaborator dari departemen lain), Tipe Problem & Permintaan Perubahan, Tracking Vendor & Biaya, Grup per departemen (assign ke grup, pool grup).
+
+**Detail lengkap:** Lihat `TICKETING-REFERENSI-TEKNIS.md` §7 Progress Implementasi, §9 Daftar Routes, §10 Konfigurasi & Setup.
+
+### ⏭️ Langkah Selanjutnya (untuk pengembang berikutnya)
+
+1. ~~**Prioritas tinggi:** Laporan SLA — grafik kepatuhan response/resolution time.~~ ✅ Selesai (Feb 2025).
+2. ~~**Prioritas sedang:** Fitur Rekan**~~ — ✅ Selesai (Feb 2025).
+3. ~~**Fase 2:** Tipe Problem & Permintaan Perubahan; Tracking Vendor & Biaya; Grup per departemen~~ — ✅ Selesai (Feb 2025).
+
+**Acuan teknis:** Gunakan `TICKETING-REFERENSI-TEKNIS.md` untuk tabel, routes, konfigurasi, dan daftar fitur yang belum diimplementasikan.
+
+### Keputusan yang sudah masuk dokumen
 - **Divisi** = tabel **departemen** (dep_id, nama), relasi ke Pegawai; tidak buat tabel divisi baru.
 - **Due date tiket pengembangan** = ditetapkan **Head IT** (bukan pemohon).
 - **Penugasan** = **satu penanggung jawab utama (primary)** per tiket; tiket gabungan: rekan dicatat di komentar.
+- **Model penugasan** = **semi bebas (semi-open)**: tiket baru boleh tanpa assignee (unassigned pool), staff bisa ambil sendiri, admin/Head IT bisa assign ke siapa saja.
+- **Kategori pengembangan** = kategori dengan `is_development = true` punya aturan berbeda (due date manual, tanpa SLA otomatis).
 - **Role** = sederhana dulu (admin, staff, pemohon), siap dikembangkan ke command center nanti.
+- **Tracking vendor & biaya** = direncanakan fase 2 untuk laporan biaya dan evaluasi vendor.
+- **Eskalasi** = tidak pakai kolom khusus, cukup assign ulang ke staff lain.
+- **Konfirmasi penutupan** = status "Menunggu Konfirmasi" sebelum "Ditutup", auto-close 3 hari, teknisi bisa tutup langsung.
+- **Reopen tiket** = tidak diizinkan; buat tiket baru dengan `related_ticket_id`.
+- **Audit trail** = tabel `ticket_activities` mencatat semua perubahan otomatis.
 
 **Pertanyaan untuk diskusi tim (jika ada):**
 - Apakah daftar kategori per departemen (IT, IPS) plus kategori “Pengembangan Aplikasi” sudah mewakili kebutuhan RS?
 - Siapa yang boleh membuat tiket? (Diperkuat di role/auth.)
 - Notifikasi fase 1: email dulu atau perlu in-app?
+

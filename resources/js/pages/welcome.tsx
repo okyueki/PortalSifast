@@ -49,7 +49,7 @@ export default function Welcome({
                             <AppLogoIcon className="size-10 fill-current text-primary-foreground" />
                         </div>
                         <h1 className="text-4xl font-bold tracking-tight text-foreground">
-                            Sika
+                            Portal RS Aisyiyah Siti Fatimah
                         </h1>
                         <p className="mt-2 text-muted-foreground">
                             Aplikasi manajemen pegawai dan user untuk rumah sakit.

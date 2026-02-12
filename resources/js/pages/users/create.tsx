@@ -29,11 +29,17 @@ type PegawaiOption = {
     phone: string | null;
 };
 
-type Props = {
-    availablePegawai: PegawaiOption[];
+type Department = {
+    dep_id: string;
+    nama: string;
 };
 
-export default function UsersCreate({ availablePegawai }: Props) {
+type Props = {
+    availablePegawai: PegawaiOption[];
+    departments: Department[];
+};
+
+export default function UsersCreate({ availablePegawai, departments }: Props) {
     const { data, setData, post, processing, errors } = useForm({
         simrs_nik: '',
         name: '',
@@ -41,6 +47,8 @@ export default function UsersCreate({ availablePegawai }: Props) {
         password: '',
         password_confirmation: '',
         phone: '',
+        role: 'pemohon',
+        dep_id: '__none__',
     });
 
     const [selectedPegawaiNik, setSelectedPegawaiNik] = useState<string>('');
@@ -50,19 +58,24 @@ export default function UsersCreate({ availablePegawai }: Props) {
         const pegawai = availablePegawai.find((p) => p.nik === nik);
         if (pegawai) {
             setData({
+                ...data,
                 simrs_nik: pegawai.nik,
                 name: pegawai.nama,
                 email: pegawai.email,
                 phone: pegawai.phone || '',
-                password: data.password,
-                password_confirmation: data.password_confirmation,
             });
         }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post('/users');
+        const payload = {
+            ...data,
+            dep_id: data.dep_id === '__none__' ? null : data.dep_id,
+        };
+        post('/users', {
+            data: payload,
+        });
     };
 
     return (
@@ -90,7 +103,7 @@ export default function UsersCreate({ availablePegawai }: Props) {
                             </SelectTrigger>
                             <SelectContent>
                                 {availablePegawai.length === 0 ? (
-                                    <SelectItem value="" disabled>
+                                    <SelectItem value="__disabled__" disabled>
                                         Semua pegawai sudah jadi user
                                     </SelectItem>
                                 ) : (
@@ -177,6 +190,49 @@ export default function UsersCreate({ availablePegawai }: Props) {
                             placeholder="081234567890"
                         />
                         <InputError message={errors.phone} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="role">Role</Label>
+                        <Select
+                            value={data.role}
+                            onValueChange={(v) => setData('role', v)}
+                        >
+                            <SelectTrigger id="role">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="staff">Staff</SelectItem>
+                                <SelectItem value="pemohon">Pemohon</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                            Admin: full access. Staff: handle tiket departemen. Pemohon: buat & lihat tiket sendiri.
+                        </p>
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="dep_id">Departemen (untuk Staff)</Label>
+                        <Select
+                            value={data.dep_id}
+                            onValueChange={(v) => setData('dep_id', v)}
+                        >
+                            <SelectTrigger id="dep_id">
+                                <SelectValue placeholder="Pilih departemen..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="__none__">Tidak ada</SelectItem>
+                                {departments.map((d) => (
+                                    <SelectItem key={d.dep_id} value={d.dep_id}>
+                                        {d.nama} ({d.dep_id})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                            Wajib untuk Staff (IT/IPS). Kosongkan untuk Admin/Pemohon.
+                        </p>
                     </div>
 
                     <div className="flex gap-3">

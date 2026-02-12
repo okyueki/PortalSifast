@@ -1,6 +1,6 @@
 import AppLogoIcon from './app-logo-icon';
 
-const APP_NAME = 'Sika';
+const APP_NAME = 'Portal RS Aisyiyah Siti Fatimah';
 
 export default function AppLogo() {
     return (

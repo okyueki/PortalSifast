@@ -56,4 +56,37 @@ class UserFactory extends Factory
             'two_factor_confirmed_at' => now(),
         ]);
     }
+
+    /**
+     * Set user role as admin.
+     */
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'admin',
+            'dep_id' => 'IT',
+        ]);
+    }
+
+    /**
+     * Set user role as staff.
+     */
+    public function staff(string $depId = 'IT'): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'staff',
+            'dep_id' => $depId,
+        ]);
+    }
+
+    /**
+     * Set user role as pemohon.
+     */
+    public function pemohon(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'pemohon',
+            'dep_id' => null,
+        ]);
+    }
 }

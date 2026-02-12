@@ -1,4 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
+import { EmptyState } from '@/components/empty-state';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -72,11 +73,11 @@ export default function PegawaiIndex({ pegawai }: Props) {
                             <tbody>
                                 {pegawai.data.length === 0 ? (
                                     <tr>
-                                        <td
-                                            colSpan={6}
-                                            className="px-4 py-8 text-center text-muted-foreground"
-                                        >
-                                            Belum ada data pegawai aktif.
+                                        <td colSpan={6} className="p-0">
+                                            <EmptyState
+                                                title="Belum ada data pegawai aktif"
+                                                description="Data pegawai diambil dari SIMRS (Dokter & Petugas)."
+                                            />
                                         </td>
                                     </tr>
                                 ) : (
