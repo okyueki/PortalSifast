@@ -106,6 +106,7 @@ class TicketController extends Controller
             'tags' => TicketTag::where('is_active', true)->orderBy('name')->get(['id', 'name', 'slug']),
             'filters' => $request->only(['status', 'priority', 'department', 'assignee', 'search', 'tag']),
             'canExport' => $user->isAdmin() || $user->isStaff(),
+            'canDelete' => $user->isAdmin(),
         ]);
     }
 
@@ -371,7 +372,7 @@ class TicketController extends Controller
 
         $user = request()->user();
 
-        $ticket->load(['type', 'category', 'subcategory', 'priority', 'status', 'tags', 'inventaris.barang', 'inventaris.ruang']);
+        $ticket->load(['type', 'category', 'subcategory', 'priority', 'status', 'requester', 'tags', 'inventaris.barang', 'inventaris.ruang']);
 
         return Inertia::render('tickets/edit', [
             'ticket' => $ticket,

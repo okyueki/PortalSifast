@@ -1,6 +1,13 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Filter, X, Download, Ticket } from 'lucide-react';
+import { Search, Plus, Filter, X, Download, Ticket, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useState, useCallback } from 'react';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/empty-state';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +43,7 @@ type Props = {
     tags: TicketTag[];
     filters: TicketFilters;
     canExport?: boolean;
+    canDelete?: boolean;
 };
 
 function getPriorityColor(color: string): string {
@@ -79,11 +87,14 @@ export default function TicketsIndex({
     tags = [],
     filters,
     canExport = false,
+    canDelete = false,
 }: Props) {
     const [search, setSearch] = useState(filters.search || '');
     const [showFilters, setShowFilters] = useState(
         !!(filters.status || filters.priority || filters.assignee || filters.tag)
     );
+    const [deleteTicketId, setDeleteTicketId] = useState<number | null>(null);
+    const [deleteTicketNumber, setDeleteTicketNumber] = useState<string>('');
 
     const applyFilters = useCallback(
         (newFilters: Partial<TicketFilters>) => {
@@ -280,12 +291,13 @@ export default function TicketsIndex({
                                     <th className="px-4 py-3 font-medium">Pemohon</th>
                                     <th className="px-4 py-3 font-medium">Petugas</th>
                                     <th className="px-4 py-3 font-medium">Dibuat</th>
+                                    {canDelete && <th className="px-4 py-3 font-medium w-12"></th>}
                                 </tr>
                             </thead>
                             <tbody>
                                 {tickets.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="p-0">
+                                        <td colSpan={canDelete ? 8 : 7} className="p-0">
                                             <EmptyState
                                                 icon={<Ticket className="size-7" />}
                                                 title={
@@ -376,6 +388,35 @@ export default function TicketsIndex({
                                             <td className="px-4 py-3 text-muted-foreground text-xs">
                                                 {formatDate(ticket.created_at)}
                                             </td>
+                                            {canDelete && (
+                                                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem asChild>
+                                                                <Link href={`/tickets/${ticket.id}/edit`}>
+                                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                                    Edit
+                                                                </Link>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                className="text-destructive focus:text-destructive"
+                                                                onClick={() => {
+                                                                    setDeleteTicketId(ticket.id);
+                                                                    setDeleteTicketNumber(ticket.ticket_number);
+                                                                }}
+                                                            >
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Hapus
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </td>
+                                            )}
                                         </tr>
                                     ))
                                 )}
@@ -420,6 +461,31 @@ export default function TicketsIndex({
                     Total: {tickets.total} tiket
                 </p>
             </div>
+
+            {canDelete && (
+                <ConfirmDialog
+                    open={deleteTicketId !== null}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setDeleteTicketId(null);
+                            setDeleteTicketNumber('');
+                        }
+                    }}
+                    title="Hapus Tiket"
+                    description={`Apakah Anda yakin ingin menghapus tiket ${deleteTicketNumber}? Tindakan ini tidak bisa dibatalkan.`}
+                    confirmLabel="Hapus"
+                    onConfirm={() => {
+                        if (deleteTicketId) {
+                            router.delete(`/tickets/${deleteTicketId}`, {
+                                onSuccess: () => {
+                                    setDeleteTicketId(null);
+                                    setDeleteTicketNumber('');
+                                },
+                            });
+                        }
+                    }}
+                />
+            )}
         </AppLayout>
     );
 }

@@ -5,7 +5,6 @@ namespace App\Actions;
 use App\Models\Pegawai;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class SyncUsersFromSimrs
 {
@@ -26,6 +25,7 @@ class SyncUsersFromSimrs
             $email = $p->getEmailForSync();
             if (empty($email) || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $skipped++;
+
                 continue;
             }
 
@@ -50,6 +50,7 @@ class SyncUsersFromSimrs
                     ]);
                 }
                 $updated++;
+
                 continue;
             }
 
@@ -57,7 +58,7 @@ class SyncUsersFromSimrs
                 User::query()->create([
                     'name' => $name,
                     'email' => $email,
-                    'password' => Hash::make(Str::random(32)),
+                    'password' => Hash::make($email),
                     'simrs_nik' => $nik,
                     'phone' => $phone,
                     'source' => 'simrs',
