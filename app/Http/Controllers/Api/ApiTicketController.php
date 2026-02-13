@@ -12,6 +12,7 @@ use App\Models\TicketCategory;
 use App\Models\TicketPriority;
 use App\Models\TicketSlaRule;
 use App\Models\TicketStatus;
+use App\Models\TicketType;
 use App\Models\User;
 use App\Notifications\TicketCommentNotification;
 use App\Notifications\TicketCreatedNotification;
@@ -38,6 +39,10 @@ class ApiTicketController extends Controller
             ], 404);
         }
 
+        // Set default type dan priority jika tidak diisi
+        $typeId = $validated['ticket_type_id'] ?? TicketType::active()->first()?->id;
+        $priorityId = $validated['ticket_priority_id'] ?? TicketPriority::active()->orderBy('level', 'desc')->first()?->id;
+
         // Get category untuk menentukan dep_id
         $category = isset($validated['ticket_category_id'])
             ? TicketCategory::find($validated['ticket_category_id'])
@@ -48,8 +53,8 @@ class ApiTicketController extends Controller
 
         // Calculate SLA due dates
         $slaDates = $this->calculateSlaDates(
-            $validated['ticket_type_id'],
-            $validated['ticket_priority_id'],
+            $typeId,
+            $priorityId,
             $validated['ticket_category_id'] ?? null
         );
 
@@ -57,10 +62,10 @@ class ApiTicketController extends Controller
         $depId = $category?->dep_id ?? 'IT';
 
         $ticket = Ticket::create([
-            'ticket_type_id' => $validated['ticket_type_id'],
+            'ticket_type_id' => $typeId,
             'ticket_category_id' => $validated['ticket_category_id'] ?? null,
             'ticket_subcategory_id' => $validated['ticket_subcategory_id'] ?? null,
-            'ticket_priority_id' => $validated['ticket_priority_id'],
+            'ticket_priority_id' => $priorityId,
             'ticket_status_id' => $newStatus->id,
             'dep_id' => $depId,
             'requester_id' => $requester->id,
@@ -143,6 +148,83 @@ class ApiTicketController extends Controller
         return response()->json([
             'success' => true,
             'data' => $tickets,
+        ]);
+    }
+
+    /**
+     * Daftar tiket dengan pagination (untuk frontend kepegawaian).
+     */
+    public function indexPaginated(Request $request): JsonResponse
+    {
+        $request->validate([
+            'nik' => ['required', 'string'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'status' => ['nullable', 'integer'],
+            'priority' => ['nullable', 'integer'],
+        ]);
+
+        $nik = $request->input('nik');
+        $perPage = $request->input('per_page', 15);
+
+        // Cari user by NIK
+        $requester = User::where('simrs_nik', $nik)->first();
+
+        if (! $requester) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pegawai dengan NIK tersebut belum terdaftar di PortalSifast.',
+                'data' => [],
+                'meta' => ['current_page' => 1, 'last_page' => 1, 'per_page' => $perPage, 'total' => 0],
+            ]);
+        }
+
+        $query = Ticket::query()
+            ->where('requester_id', $requester->id)
+            ->with(['type', 'category', 'priority', 'status', 'assignee']);
+
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('ticket_status_id', $request->input('status'));
+        }
+
+        // Filter by priority
+        if ($request->filled('priority')) {
+            $query->where('ticket_priority_id', $request->input('priority'));
+        }
+
+        $tickets = $query
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => $tickets->map(fn (Ticket $t) => [
+                'id' => $t->id,
+                'ticket_number' => $t->ticket_number,
+                'title' => $t->title,
+                'description' => $t->description,
+                'type' => $t->type->name,
+                'type_id' => $t->ticket_type_id,
+                'category' => $t->category?->name,
+                'category_id' => $t->ticket_category_id,
+                'priority' => $t->priority->name,
+                'priority_id' => $t->ticket_priority_id,
+                'priority_color' => $t->priority->color,
+                'status' => $t->status->name,
+                'status_id' => $t->ticket_status_id,
+                'status_color' => $t->status->color,
+                'is_closed' => $t->status->is_closed,
+                'assignee' => $t->assignee?->name,
+                'created_at' => $t->created_at->toIso8601String(),
+                'updated_at' => $t->updated_at->toIso8601String(),
+            ]),
+            'meta' => [
+                'current_page' => $tickets->currentPage(),
+                'last_page' => $tickets->lastPage(),
+                'per_page' => $tickets->perPage(),
+                'total' => $tickets->total(),
+            ],
         ]);
     }
 

@@ -1,6 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\ApiTicketController;
+use App\Models\TicketCategory;
+use App\Models\TicketPriority;
+use App\Models\TicketStatus;
+use App\Models\TicketType;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -30,6 +34,31 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Tambah komentar pada tiket (hanya requester sesuai NIK)
     Route::post('/tickets/{ticket}/comments', [ApiTicketController::class, 'storeComment']);
+
+    // =====================================================================
+    // Endpoint untuk Frontend Kepegawaian (prefix: /api/sifast/)
+    // =====================================================================
+    Route::prefix('sifast')->group(function () {
+        // Tiket (dengan pagination)
+        Route::get('/ticket', [ApiTicketController::class, 'indexPaginated']);
+        Route::post('/ticket', [ApiTicketController::class, 'store']);
+        Route::get('/ticket/{ticket}', [ApiTicketController::class, 'show']);
+        Route::post('/ticket/{ticket}/comments', [ApiTicketController::class, 'storeComment']);
+
+        // Master Data
+        Route::get('/ticket-type', fn () => response()->json(
+            TicketType::active()->get(['id', 'name', 'slug', 'description'])
+        ));
+        Route::get('/ticket-category', fn () => response()->json(
+            TicketCategory::active()->with('subcategories:id,name,ticket_category_id,is_active')->get(['id', 'name', 'dep_id', 'ticket_type_id', 'is_development'])
+        ));
+        Route::get('/ticket-priority', fn () => response()->json(
+            TicketPriority::active()->ordered()->get(['id', 'name', 'level', 'color', 'response_hours', 'resolution_hours'])
+        ));
+        Route::get('/ticket-status', fn () => response()->json(
+            TicketStatus::active()->ordered()->get(['id', 'name', 'slug', 'color', 'order', 'is_closed'])
+        ));
+    });
 });
 
 // Test endpoint (tanpa auth) untuk cek API berjalan
