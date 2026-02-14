@@ -7,6 +7,7 @@ use App\Models\Departemen;
 use App\Models\TicketCategory;
 use App\Models\TicketPriority;
 use App\Models\TicketStatus;
+use App\Models\TicketTag;
 use App\Models\TicketType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ class TicketSettingsController extends Controller
                 ->get(),
             'priorities' => TicketPriority::orderBy('level')->get(),
             'statuses' => TicketStatus::orderBy('order')->get(),
+            'tags' => TicketTag::orderBy('name')->get(),
             'departments' => Departemen::orderBy('nama')->get(['dep_id', 'nama']),
         ]);
     }
@@ -197,5 +199,47 @@ class TicketSettingsController extends Controller
         $status->delete();
 
         return back()->with('success', 'Status berhasil dihapus.');
+    }
+
+    // ============== TAGS ==============
+
+    public function storeTag(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255',
+        ]);
+
+        $validated['slug'] = $validated['slug'] ?: TicketTag::slugFromName($validated['name']);
+
+        TicketTag::create($validated);
+
+        return back()->with('success', 'Tag berhasil ditambahkan.');
+    }
+
+    public function updateTag(Request $request, TicketTag $tag): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255',
+            'is_active' => 'boolean',
+        ]);
+
+        $validated['slug'] = $validated['slug'] ?: TicketTag::slugFromName($validated['name']);
+
+        $tag->update($validated);
+
+        return back()->with('success', 'Tag berhasil diperbarui.');
+    }
+
+    public function destroyTag(TicketTag $tag): RedirectResponse
+    {
+        if ($tag->tickets()->exists()) {
+            return back()->with('error', 'Tag tidak bisa dihapus karena masih digunakan.');
+        }
+
+        $tag->delete();
+
+        return back()->with('success', 'Tag berhasil dihapus.');
     }
 }

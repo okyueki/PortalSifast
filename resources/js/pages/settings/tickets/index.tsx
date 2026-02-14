@@ -82,21 +82,30 @@ type TicketStatus = {
     is_active: boolean;
 };
 
+type TicketTag = {
+    id: number;
+    name: string;
+    slug: string;
+    is_active: boolean;
+};
+
 type Props = {
     types: TicketType[];
     categories: TicketCategory[];
     priorities: TicketPriority[];
     statuses: TicketStatus[];
+    tags: TicketTag[];
     departments: Department[];
 };
 
-type Tab = 'types' | 'categories' | 'priorities' | 'statuses';
+type Tab = 'types' | 'categories' | 'priorities' | 'statuses' | 'tags';
 
 export default function TicketSettingsIndex({
     types,
     categories,
     priorities,
     statuses,
+    tags,
     departments,
 }: Props) {
     const [activeTab, setActiveTab] = useState<Tab>('categories');
@@ -137,6 +146,13 @@ export default function TicketSettingsIndex({
         color: 'blue',
         order: 1,
         is_closed: false,
+        is_active: true,
+    });
+
+    // Form for tags
+    const tagForm = useForm({
+        name: '',
+        slug: '',
         is_active: true,
     });
 
@@ -184,6 +200,13 @@ export default function TicketSettingsIndex({
                 is_closed: s.is_closed,
                 is_active: s.is_active,
             });
+        } else if (tab === 'tags') {
+            const t = item as TicketTag;
+            tagForm.setData({
+                name: t.name,
+                slug: t.slug,
+                is_active: t.is_active,
+            });
         }
         setDialogOpen(true);
     };
@@ -193,6 +216,7 @@ export default function TicketSettingsIndex({
         categoryForm.reset();
         priorityForm.reset();
         statusForm.reset();
+        tagForm.reset();
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -238,6 +262,16 @@ export default function TicketSettingsIndex({
                     onSuccess: () => setDialogOpen(false),
                 });
             }
+        } else if (activeTab === 'tags') {
+            if (editingItem) {
+                tagForm.put(`/settings/ticket-tags/${(editingItem as TicketTag).id}`, {
+                    onSuccess: () => setDialogOpen(false),
+                });
+            } else {
+                tagForm.post('/settings/ticket-tags', {
+                    onSuccess: () => setDialogOpen(false),
+                });
+            }
         }
     };
 
@@ -249,6 +283,7 @@ export default function TicketSettingsIndex({
             categories: '/settings/ticket-categories',
             priorities: '/settings/ticket-priorities',
             statuses: '/settings/ticket-statuses',
+            tags: '/settings/ticket-tags',
         };
 
         router.delete(`${urlMap[deleteConfirm.type]}/${deleteConfirm.id}`, {
@@ -261,6 +296,7 @@ export default function TicketSettingsIndex({
         categories: 'Kategori',
         priorities: 'Prioritas',
         statuses: 'Status',
+        tags: 'Tag',
     };
 
     const getDialogTitle = () => {
@@ -567,6 +603,52 @@ export default function TicketSettingsIndex({
                             </TableBody>
                         </Table>
                     )}
+
+                    {activeTab === 'tags' && (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Nama</TableHead>
+                                    <TableHead>Slug</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="w-[100px]">Aksi</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {tags.map((tag) => (
+                                    <TableRow key={tag.id}>
+                                        <TableCell className="font-medium">{tag.name}</TableCell>
+                                        <TableCell className="font-mono text-sm">{tag.slug}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={tag.is_active ? 'default' : 'secondary'}>
+                                                {tag.is_active ? 'Aktif' : 'Nonaktif'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => openEditDialog(tag, 'tags')}
+                                                >
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() =>
+                                                        setDeleteConfirm({ type: 'tags', id: tag.id })
+                                                    }
+                                                >
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
                 </div>
             </div>
 
@@ -806,6 +888,30 @@ export default function TicketSettingsIndex({
                             </>
                         )}
 
+                        {activeTab === 'tags' && (
+                            <>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="name">Nama</Label>
+                                    <Input
+                                        id="name"
+                                        value={tagForm.data.name}
+                                        onChange={(e) => tagForm.setData('name', e.target.value)}
+                                    />
+                                    <InputError message={tagForm.errors.name} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="slug">Slug (opsional)</Label>
+                                    <Input
+                                        id="slug"
+                                        value={tagForm.data.slug}
+                                        onChange={(e) => tagForm.setData('slug', e.target.value)}
+                                        placeholder="Akan di-generate otomatis dari nama jika kosong"
+                                    />
+                                    <InputError message={tagForm.errors.slug} />
+                                </div>
+                            </>
+                        )}
+
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                                 Batal
@@ -814,7 +920,8 @@ export default function TicketSettingsIndex({
                                 activeTab === 'types' ? typeForm.processing :
                                 activeTab === 'categories' ? categoryForm.processing :
                                 activeTab === 'priorities' ? priorityForm.processing :
-                                statusForm.processing
+                                activeTab === 'statuses' ? statusForm.processing :
+                                tagForm.processing
                             }>
                                 {editingItem ? 'Simpan' : 'Tambah'}
                             </Button>

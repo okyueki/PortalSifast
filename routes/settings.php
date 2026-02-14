@@ -56,4 +56,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('settings/ticket-statuses', [TicketSettingsController::class, 'storeStatus'])->name('settings.ticket-statuses.store');
     Route::put('settings/ticket-statuses/{status}', [TicketSettingsController::class, 'updateStatus'])->name('settings.ticket-statuses.update');
     Route::delete('settings/ticket-statuses/{status}', [TicketSettingsController::class, 'destroyStatus'])->name('settings.ticket-statuses.destroy');
+
+    // Ticket Tags
+    Route::post('settings/ticket-tags', [TicketSettingsController::class, 'storeTag'])->name('settings.ticket-tags.store');
+    Route::put('settings/ticket-tags/{tag}', [TicketSettingsController::class, 'updateTag'])->name('settings.ticket-tags.update');
+    Route::delete('settings/ticket-tags/{tag}', [TicketSettingsController::class, 'destroyTag'])->name('settings.ticket-tags.destroy');
 });
