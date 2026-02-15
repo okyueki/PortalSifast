@@ -85,7 +85,7 @@ export default function InventarisCreate({ barang, ruang }: Props) {
                             value={data.no_inventaris}
                             onChange={(e) => setData('no_inventaris', e.target.value)}
                             placeholder="Contoh: INV-2024-001"
-                            maxLength={50}
+                            maxLength={30}
                             required
                         />
                         <InputError message={errors.no_inventaris} />
@@ -142,13 +142,19 @@ export default function InventarisCreate({ barang, ruang }: Props) {
 
                     <div className="grid gap-2">
                         <Label htmlFor="asal_barang">Asal Barang</Label>
-                        <Input
-                            id="asal_barang"
+                        <Select
                             value={data.asal_barang}
-                            onChange={(e) => setData('asal_barang', e.target.value)}
-                            placeholder="Contoh: Hibah, Pembelian"
-                            maxLength={100}
-                        />
+                            onValueChange={(v) => setData('asal_barang', v)}
+                        >
+                            <SelectTrigger id="asal_barang">
+                                <SelectValue placeholder="Pilih asal barang..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Beli">Beli</SelectItem>
+                                <SelectItem value="Bantuan">Bantuan</SelectItem>
+                                <SelectItem value="Hibah">Hibah</SelectItem>
+                            </SelectContent>
+                        </Select>
                         <InputError message={errors.asal_barang} />
                     </div>
 
@@ -180,13 +186,21 @@ export default function InventarisCreate({ barang, ruang }: Props) {
 
                     <div className="grid gap-2">
                         <Label htmlFor="status_barang">Status Barang</Label>
-                        <Input
-                            id="status_barang"
+                        <Select
                             value={data.status_barang}
-                            onChange={(e) => setData('status_barang', e.target.value)}
-                            placeholder="Contoh: Baik, Rusak"
-                            maxLength={50}
-                        />
+                            onValueChange={(v) => setData('status_barang', v)}
+                        >
+                            <SelectTrigger id="status_barang">
+                                <SelectValue placeholder="Pilih status barang..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Ada">Ada</SelectItem>
+                                <SelectItem value="Rusak">Rusak</SelectItem>
+                                <SelectItem value="Hilang">Hilang</SelectItem>
+                                <SelectItem value="Perbaikan">Perbaikan</SelectItem>
+                                <SelectItem value="Dipinjam">Dipinjam</SelectItem>
+                            </SelectContent>
+                        </Select>
                         <InputError message={errors.status_barang} />
                     </div>
 
@@ -197,8 +211,8 @@ export default function InventarisCreate({ barang, ruang }: Props) {
                                 id="no_rak"
                                 value={data.no_rak}
                                 onChange={(e) => setData('no_rak', e.target.value)}
-                                placeholder="Opsional"
-                                maxLength={50}
+                                placeholder="Contoh: A1"
+                                maxLength={3}
                             />
                             <InputError message={errors.no_rak} />
                         </div>
@@ -209,7 +223,7 @@ export default function InventarisCreate({ barang, ruang }: Props) {
                                 value={data.no_box}
                                 onChange={(e) => setData('no_box', e.target.value)}
                                 placeholder="Opsional"
-                                maxLength={50}
+                                maxLength={3}
                             />
                             <InputError message={errors.no_box} />
                         </div>

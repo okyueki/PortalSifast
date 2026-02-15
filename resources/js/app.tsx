@@ -4,6 +4,14 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '../css/app.css';
 import { initializeTheme } from './hooks/use-appearance';
+import './echo.js';
+
+// Add Echo to global window type
+declare global {
+  interface Window {
+    Echo: any;
+  }
+}
 
 const appName = import.meta.env.VITE_APP_NAME || 'Portal RS Aisyiyah Siti Fatimah';
 

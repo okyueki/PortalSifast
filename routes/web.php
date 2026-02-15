@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InventarisController;
+use App\Http\Controllers\InventarisBarangController;
 use App\Http\Controllers\PegawaiController;
 use App\Http\Controllers\SlaReportController;
 use App\Http\Controllers\TicketAttachmentController;
@@ -11,6 +12,8 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketSparepartItemController;
 use App\Http\Controllers\TicketVendorCostController;
 use App\Http\Controllers\UsersController;
+use App\Http\Controllers\UserPresenceController;
+use App\Http\Controllers\UserOnlineController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -36,6 +39,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Inventaris CRUD
     Route::resource('inventaris', InventarisController::class)->parameters(['inventaris' => 'inventaris:no_inventaris']);
+
+    // Inventaris Barang CRUD (Master Barang)
+    Route::resource('inventaris-barang', InventarisBarangController::class)->parameters(['inventaris_barang' => 'barang:kode_barang']);
 
     // Ticket routes
     Route::get('tickets/search-for-link', [TicketController::class, 'searchForLink'])->name('tickets.search-for-link');
@@ -68,6 +74,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('tickets/{ticket}/sparepart-items', [TicketSparepartItemController::class, 'store'])->name('tickets.sparepart-items.store');
     Route::patch('tickets/{ticket}/sparepart-items/{sparepartItem}', [TicketSparepartItemController::class, 'update'])->name('tickets.sparepart-items.update');
     Route::delete('tickets/{ticket}/sparepart-items/{sparepartItem}', [TicketSparepartItemController::class, 'destroy'])->name('tickets.sparepart-items.destroy');
+
+    // User Presence API
+    Route::get('api/users/online', [UserPresenceController::class, 'index'])->name('api.users.online');
+    Route::get('api/users/online/count', [UserPresenceController::class, 'count'])->name('api.users.online.count');
+    Route::get('api/users/{user}/online', [UserPresenceController::class, 'check'])->name('api.users.online.check');
+
+    // User Online Page
+    Route::get('users/online', [UserOnlineController::class, 'index'])->name('users.online');
+    Route::get('api/users-online', [UserOnlineController::class, 'api'])->name('api.users-online');
 });
 
 require __DIR__.'/settings.php';
