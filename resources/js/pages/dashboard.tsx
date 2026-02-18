@@ -192,9 +192,27 @@ export default function Dashboard({
                                                         {t.status?.name}
                                                     </Badge>
                                                 </div>
-                                                <p className="mt-1 truncate text-sm text-muted-foreground">
+                                                <p className="mt-1 truncate text-sm">
                                                     {t.title}
                                                 </p>
+                                                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                                    <span className="flex items-center gap-1">
+                                                        <UserCircle className="h-3 w-3" />
+                                                        <span className="text-foreground">{t.requester?.name || '-'}</span>
+                                                    </span>
+                                                    {t.assignee ? (
+                                                        <span className="flex items-center gap-1">
+                                                            <span className="text-muted-foreground">→</span>
+                                                            <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                                                                {t.assignee.name}
+                                                            </span>
+                                                        </span>
+                                                    ) : (
+                                                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                                            Belum ditugaskan
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </Link>
                                         </li>
                                     ))}
@@ -247,6 +265,24 @@ export default function Dashboard({
                                                 <p className="mt-1 truncate text-sm">
                                                     {t.title}
                                                 </p>
+                                                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                                    <span className="flex items-center gap-1">
+                                                        <UserCircle className="h-3 w-3" />
+                                                        <span className="text-foreground">{t.requester?.name || '-'}</span>
+                                                    </span>
+                                                    {t.assignee ? (
+                                                        <span className="flex items-center gap-1">
+                                                            <span className="text-muted-foreground">→</span>
+                                                            <span className="rounded bg-orange-100 px-1.5 py-0.5 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                                                                {t.assignee.name}
+                                                            </span>
+                                                        </span>
+                                                    ) : (
+                                                        <span className="rounded bg-red-100 px-1.5 py-0.5 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                                                            Belum ditugaskan!
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </Link>
                                         </li>
                                     ))}

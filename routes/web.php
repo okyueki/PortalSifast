@@ -40,6 +40,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Ticket routes
     Route::get('tickets/search-for-link', [TicketController::class, 'searchForLink'])->name('tickets.search-for-link');
     Route::get('tickets/search-for-inventaris', [TicketController::class, 'searchForInventaris'])->name('tickets.search-for-inventaris');
+    Route::get('tickets/search-for-user', [TicketController::class, 'searchForUser'])->name('tickets.search-for-user');
     Route::get('tickets/export', [TicketController::class, 'export'])->name('tickets.export');
     Route::resource('tickets', TicketController::class);
     Route::post('tickets/{ticket}/assign-self', [TicketController::class, 'assignToSelf'])->name('tickets.assign-self');

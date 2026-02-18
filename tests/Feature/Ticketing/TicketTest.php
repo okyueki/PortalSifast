@@ -148,6 +148,70 @@ it('validates required fields when creating ticket', function () {
     $response->assertSessionHasErrors(['ticket_type_id', 'ticket_priority_id', 'title']);
 });
 
+it('admin can create ticket on behalf of another user', function () {
+    $admin = User::factory()->admin()->create();
+    $pemohon = User::factory()->pemohon()->create();
+
+    $response = $this->actingAs($admin)->post('/tickets', [
+        'ticket_type_id' => $this->type->id,
+        'ticket_category_id' => $this->category->id,
+        'ticket_priority_id' => $this->priority->id,
+        'title' => 'Ticket for other user',
+        'description' => 'Created by admin on behalf of pemohon',
+        'requester_id' => $pemohon->id,
+    ]);
+
+    $response->assertRedirect();
+    $this->assertDatabaseHas('tickets', [
+        'title' => 'Ticket for other user',
+        'requester_id' => $pemohon->id,
+    ]);
+});
+
+it('non-admin cannot set requester_id', function () {
+    $pemohon = User::factory()->pemohon()->create();
+    $otherUser = User::factory()->pemohon()->create();
+
+    $response = $this->actingAs($pemohon)->post('/tickets', [
+        'ticket_type_id' => $this->type->id,
+        'ticket_category_id' => $this->category->id,
+        'ticket_priority_id' => $this->priority->id,
+        'title' => 'Trying to set requester',
+        'requester_id' => $otherUser->id,
+    ]);
+
+    $response->assertRedirect();
+    // Ticket should be created with own requester_id, not the one passed
+    $this->assertDatabaseHas('tickets', [
+        'title' => 'Trying to set requester',
+        'requester_id' => $pemohon->id,
+    ]);
+});
+
+it('returns canSelectRequester flag for admin', function () {
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->get('/tickets/create');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('tickets/create')
+        ->where('canSelectRequester', true)
+    );
+});
+
+it('returns canSelectRequester false for non-admin', function () {
+    $pemohon = User::factory()->pemohon()->create();
+
+    $response = $this->actingAs($pemohon)->get('/tickets/create');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('tickets/create')
+        ->where('canSelectRequester', false)
+    );
+});
+
 // ==================== SHOW ====================
 
 it('shows ticket detail for requester', function () {

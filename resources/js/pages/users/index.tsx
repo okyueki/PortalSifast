@@ -1,8 +1,18 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import { Search, X } from 'lucide-react';
+import { useState, useCallback } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
@@ -33,11 +43,42 @@ type PaginatedUsers = {
     links: { url: string | null; label: string; active: boolean }[];
 };
 
-type Props = {
-    users: PaginatedUsers;
+type UserFilters = {
+    search: string;
+    role: string;
+    dep_id: string;
 };
 
-export default function UsersIndex({ users }: Props) {
+type Props = {
+    users: PaginatedUsers;
+    filters: UserFilters;
+};
+
+export default function UsersIndex({ users, filters }: Props) {
+    const [search, setSearch] = useState(filters.search || '');
+
+    const applyFilters = useCallback(
+        (newFilters: Partial<UserFilters>) => {
+            router.get(
+                '/users',
+                { ...filters, ...newFilters },
+                { preserveState: true, replace: true }
+            );
+        },
+        [filters]
+    );
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        applyFilters({ search });
+    };
+
+    const clearFilters = () => {
+        setSearch('');
+        router.get('/users', {}, { preserveState: true, replace: true });
+    };
+
+    const hasActiveFilters = !!(filters.search || filters.role || filters.dep_id);
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Daftar User" />
@@ -51,6 +92,57 @@ export default function UsersIndex({ users }: Props) {
                     <Button asChild>
                         <Link href="/users/create">Tambah User</Link>
                     </Button>
+                </div>
+
+                {/* Search & Filter Bar */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <form onSubmit={handleSearch} className="flex flex-1 gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                type="search"
+                                placeholder="Cari nama, email, atau NIK..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
+                        <Button type="submit" variant="secondary">
+                            Cari
+                        </Button>
+                    </form>
+                    <Select
+                        value={filters.role || '_all'}
+                        onValueChange={(v) => applyFilters({ role: v === '_all' ? '' : v })}
+                    >
+                        <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Semua Role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="_all">Semua Role</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="staff">Staff</SelectItem>
+                            <SelectItem value="pemohon">Pemohon</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Select
+                        value={filters.dep_id || '_all'}
+                        onValueChange={(v) => applyFilters({ dep_id: v === '_all' ? '' : v })}
+                    >
+                        <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Semua Dept" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="_all">Semua Dept</SelectItem>
+                            <SelectItem value="IT">IT</SelectItem>
+                            <SelectItem value="IPS">IPS</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    {hasActiveFilters && (
+                        <Button variant="ghost" size="icon" onClick={clearFilters}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                    )}
                 </div>
 
                 <div className="rounded-2xl border border-border/80 bg-card shadow-sm">

@@ -15,13 +15,40 @@ class UsersController extends Controller
 {
     public function index(Request $request): Response
     {
-        $users = User::query()
+        $query = User::query();
+
+        // Search by name, email, NIK
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('simrs_nik', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by role
+        if ($request->filled('role')) {
+            $query->where('role', $request->input('role'));
+        }
+
+        // Filter by department
+        if ($request->filled('dep_id')) {
+            $query->where('dep_id', $request->input('dep_id'));
+        }
+
+        $users = $query
             ->orderBy('name')
             ->paginate(15)
             ->withQueryString();
 
         return Inertia::render('users/index', [
             'users' => $users,
+            'filters' => [
+                'search' => $request->input('search', ''),
+                'role' => $request->input('role', ''),
+                'dep_id' => $request->input('dep_id', ''),
+            ],
         ]);
     }
 

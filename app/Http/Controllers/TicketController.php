@@ -136,6 +136,7 @@ class TicketController extends Controller
             'priorities' => TicketPriority::active()->ordered()->get(),
             'tags' => TicketTag::where('is_active', true)->orderBy('name')->get(['id', 'name', 'slug']),
             'recentTicketsForLink' => $recentTicketsForLink,
+            'canSelectRequester' => $user->isAdmin(),
         ]);
     }
 
@@ -196,6 +197,47 @@ class TicketController extends Controller
         }
     }
 
+    /**
+     * Search users for requester selector (admin only).
+     */
+    public function searchForUser(Request $request): \Illuminate\Http\JsonResponse
+    {
+        // Hanya admin yang bisa memilih pemohon
+        if (! $request->user()?->isAdmin()) {
+            return response()->json([], 403);
+        }
+
+        $q = $request->query('q', '');
+
+        try {
+            $users = User::query()
+                ->when($q, function ($query) use ($q) {
+                    $query->where(function ($q2) use ($q) {
+                        $q2->where('name', 'like', "%{$q}%")
+                            ->orWhere('email', 'like', "%{$q}%")
+                            ->orWhere('simrs_nik', 'like', "%{$q}%");
+                    });
+                })
+                ->orderBy('name')
+                ->limit(20)
+                ->get(['id', 'name', 'email', 'simrs_nik', 'role', 'dep_id'])
+                ->map(function (User $user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'simrs_nik' => $user->simrs_nik,
+                        'role' => $user->role,
+                        'dep_id' => $user->dep_id,
+                    ];
+                });
+
+            return response()->json($users);
+        } catch (\Throwable $e) {
+            return response()->json([]);
+        }
+    }
+
     private function getTicketsForRelatedSelect(User $user): \Illuminate\Database\Eloquent\Builder
     {
         $query = Ticket::query();
@@ -241,6 +283,12 @@ class TicketController extends Controller
         // Determine department: from category if set, otherwise default to IT
         $depId = $category?->dep_id ?? 'IT';
 
+        // Tentukan requester: admin bisa pilih manual, user biasa = diri sendiri
+        $requesterId = $user->id;
+        if ($user->isAdmin() && ! empty($validated['requester_id'])) {
+            $requesterId = $validated['requester_id'];
+        }
+
         $ticket = Ticket::create([
             'ticket_type_id' => $validated['ticket_type_id'],
             'ticket_category_id' => $validated['ticket_category_id'] ?? null,
@@ -248,7 +296,7 @@ class TicketController extends Controller
             'ticket_priority_id' => $validated['ticket_priority_id'],
             'ticket_status_id' => $newStatus->id,
             'dep_id' => $depId,
-            'requester_id' => $user->id,
+            'requester_id' => $requesterId,
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'related_ticket_id' => $validated['related_ticket_id'] ?? null,

@@ -23,7 +23,7 @@ class StoreTicketRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'ticket_type_id' => ['required', 'integer', Rule::exists('ticket_types', 'id')->where('is_active', true)],
             'ticket_category_id' => ['nullable', 'integer', Rule::exists('ticket_categories', 'id')->where('is_active', true)],
             'ticket_subcategory_id' => ['nullable', 'integer', Rule::exists('ticket_subcategories', 'id')->where('is_active', true)],
@@ -35,6 +35,13 @@ class StoreTicketRequest extends FormRequest
             'tag_ids' => ['nullable', 'array'],
             'tag_ids.*' => ['integer', Rule::exists('ticket_tags', 'id')->where('is_active', true)],
         ];
+
+        // Admin dapat memilih pemohon secara manual
+        if ($this->user()?->isAdmin()) {
+            $rules['requester_id'] = ['nullable', 'integer', Rule::exists('users', 'id')];
+        }
+
+        return $rules;
     }
 
     /**

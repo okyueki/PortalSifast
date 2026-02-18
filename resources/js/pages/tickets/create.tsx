@@ -16,6 +16,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { InventarisSearchInput } from '@/components/inventaris-search-input';
+import { UserSearchInput } from '@/components/user-search-input';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
@@ -40,6 +41,7 @@ type Props = {
     priorities: TicketPriority[];
     tags: TicketTag[];
     recentTicketsForLink: TicketForLink[];
+    canSelectRequester: boolean;
 };
 
 export default function TicketCreate({
@@ -48,6 +50,7 @@ export default function TicketCreate({
     priorities,
     tags = [],
     recentTicketsForLink = [],
+    canSelectRequester = false,
 }: Props) {
     const { data, setData, post, processing, errors } = useForm({
         ticket_type_id: '',
@@ -59,6 +62,7 @@ export default function TicketCreate({
         related_ticket_id: '',
         asset_no_inventaris: null as string | null,
         tag_ids: [] as number[],
+        requester_id: null as number | null,
     });
 
     const [filteredCategories, setFilteredCategories] = useState<TicketCategory[]>([]);
@@ -149,6 +153,24 @@ export default function TicketCreate({
                     onSubmit={handleSubmit}
                     className="max-w-2xl space-y-6 rounded-xl border bg-card p-6"
                 >
+                    {/* Requester Selection (Admin Only) */}
+                    {canSelectRequester && (
+                        <div className="grid gap-2">
+                            <Label htmlFor="requester_id">
+                                Pemohon
+                            </Label>
+                            <UserSearchInput
+                                value={data.requester_id}
+                                onChange={(v) => setData('requester_id', v)}
+                                placeholder="Cari nama, email, atau NIK pemohon..."
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Pilih pemohon untuk tiket ini. Kosongkan jika Anda adalah pemohon.
+                            </p>
+                            <InputError message={errors.requester_id} />
+                        </div>
+                    )}
+
                     {/* Type */}
                     <div className="grid gap-2">
                         <Label htmlFor="ticket_type_id">
