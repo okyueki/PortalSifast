@@ -11,6 +11,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
+import UserPresenceWidget from '@/components/user-presence-widget';
+import UserOnlineStatus from '@/components/user-online-status';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
 import type { Ticket as TicketType } from '@/types/ticket';
@@ -36,6 +38,15 @@ type Props = {
     stats: DashboardStats;
     recentTickets: TicketType[];
     overdueTickets: TicketType[];
+    onlineUsers: {
+        count: number;
+        users: Array<{
+            id: number;
+            name: string;
+            email: string;
+            avatar_url?: string;
+        }>;
+    };
 };
 
 function getStatusColor(color: string | undefined): string {
@@ -54,6 +65,7 @@ export default function Dashboard({
     stats,
     recentTickets,
     overdueTickets,
+    onlineUsers,
 }: Props) {
     const quickLinks = [
         {
@@ -156,6 +168,11 @@ export default function Dashboard({
                             </p>
                         </CardContent>
                     </Card>
+                </div>
+
+                {/* User Online Widget */}
+                <div className="mt-6">
+                    <UserPresenceWidget />
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-2">
@@ -314,6 +331,9 @@ export default function Dashboard({
                         ),
                     )}
                 </div>
+
+                {/* Floating User Online Status */}
+                <UserOnlineStatus />
             </div>
         </AppLayout>
     );

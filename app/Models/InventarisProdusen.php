@@ -16,4 +16,12 @@ class InventarisProdusen extends Model
     protected $fillable = [
         'kode_produsen', 'nama_produsen', 'alamat_produsen', 'no_telp', 'email', 'website_produsen',
     ];
+
+    protected $primaryKey = 'kode_produsen';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+    public $timestamps = false;
 }

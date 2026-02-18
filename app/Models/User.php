@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
@@ -54,6 +55,24 @@ class User extends Authenticatable
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    // ==================== SESSION RELATIONSHIP ====================
+
+    /**
+     * User sessions untuk tracking online status
+     */
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(\Illuminate\Session\DatabaseSession::class, 'user_id');
+    }
+
+    /**
+     * Get avatar URL attribute
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return null; // No avatar field in database
     }
 
     // ==================== TICKETING RELATIONSHIPS ====================

@@ -13,6 +13,14 @@ class InventarisKategori extends Model
 
     protected $table = 'inventaris_kategori';
 
+    protected $primaryKey = 'id_kategori';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+    public $timestamps = false;
+
     protected $fillable = [
         'id_kategori', 'nama_kategori',
     ];

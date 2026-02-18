@@ -13,6 +13,14 @@ class InventarisJenis extends Model
 
     protected $table = 'inventaris_jenis';
 
+    protected $primaryKey = 'id_jenis';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+    public $timestamps = false;
+
     protected $fillable = [
         'id_jenis', 'nama_jenis',
     ];

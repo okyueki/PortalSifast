@@ -2,7 +2,11 @@
 
 namespace App\Providers;
 
+use App\Listeners\SetUserOnlineOnLogin;
+use App\Listeners\SetUserOfflineOnLogout;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
@@ -27,6 +31,10 @@ class AppServiceProvider extends ServiceProvider
         if (app()->environment('production')) {
             URL::forceScheme('https');
         }
+
+        // Register event listeners for user presence tracking
+        \Event::listen(Login::class, SetUserOnlineOnLogin::class);
+        \Event::listen(Logout::class, SetUserOfflineOnLogout::class);
     }
 
     /**

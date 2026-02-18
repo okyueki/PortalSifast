@@ -4,12 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Ticket;
 use App\Models\TicketStatus;
+use App\Services\UserPresenceService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
+    public function __construct(
+        private UserPresenceService $userPresenceService
+    ) {}
+
     public function __invoke(Request $request): Response
     {
         $user = $request->user();
@@ -73,10 +78,18 @@ class DashboardController extends Controller
                 ->get()
             : collect();
 
+        // Get online users statistics
+        $onlineUsers = $this->userPresenceService->getOnlineUsers();
+        $onlineCount = $this->userPresenceService->getOnlineUsersCount();
+
         return Inertia::render('dashboard', [
             'stats' => $stats,
             'recentTickets' => $recentTickets,
             'overdueTickets' => $overdueTickets,
+            'onlineUsers' => [
+                'count' => $onlineCount,
+                'users' => $onlineUsers,
+            ],
         ]);
     }
 }

@@ -7,6 +7,7 @@ import {
     Ticket,
     UserCircle,
     Users,
+    Wifi,
 } from 'lucide-react';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -48,6 +49,11 @@ const mainNavItems: NavItem[] = [
         title: 'Inventaris',
         href: '/inventaris',
         icon: Package,
+    },
+    {
+        title: 'User Online',
+        href: '/users/online',
+        icon: Wifi,
     },
     {
         title: 'Daftar User',
