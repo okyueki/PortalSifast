@@ -10,6 +10,7 @@ import {
     LayoutDashboard,
     Package,
     BarChart3,
+    AlertCircle,
 } from 'lucide-react';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { dashboard } from '@/routes';
@@ -23,6 +24,7 @@ const mainNavItems = [
     { id: 'tickets', label: 'Daftar Tiket', href: '/tickets', icon: ListTodo },
     { id: 'tickets-create', label: 'Buat Tiket', href: '/tickets/create', icon: PlusCircle },
     { id: 'reports-sla', label: 'Laporan SLA', href: '/reports/sla', icon: BarChart3 },
+    { id: 'emergency-reports', label: 'Laporan Darurat', href: '/emergency-reports', icon: AlertCircle },
     { id: 'pegawai', label: 'Daftar Pegawai', href: '/pegawai', icon: UserCircle },
     { id: 'inventaris', label: 'Inventaris', href: '/inventaris', icon: Package },
     { id: 'users', label: 'Daftar User', href: '/users', icon: Users },
@@ -79,7 +81,9 @@ export function TemplateSidebar() {
                                   ? isTicketCreateActive(currentUrl)
                                   : item.href === '/inventaris'
                                     ? currentUrl === '/inventaris' || /^\/inventaris\/[^/]+/.test(currentUrl)
-                                    : isCurrentUrl(item.href);
+                                    : item.href === '/emergency-reports'
+                                      ? currentUrl === '/emergency-reports' || /^\/emergency-reports\/.+/.test(currentUrl)
+                                      : isCurrentUrl(item.href);
                         return (
                             <Link
                                 key={item.id}

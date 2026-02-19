@@ -120,7 +120,7 @@ export default function InventarisBarangIndex({ barang, filters }: Props) {
                                                         ? 'Coba ubah kata kunci pencarian.'
                                                         : 'Tambahkan barang master untuk inventaris.'
                                                 }
-                                                icon={Package}
+                                                icon={<Package className="size-7" />}
                                             />
                                         </td>
                                     </tr>

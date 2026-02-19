@@ -64,6 +64,50 @@ headers: {
 
 ---
 
+## "Login" dan Get Nama User
+
+API ini **tidak punya login per user** (tidak ada endpoint username/password → token). Yang dipakai:
+
+1. **Satu Bearer token** untuk aplikasi kepegawaian (generate sekali di PortalSifast, simpan di React).
+2. **NIK** pegawai yang sedang "login" di aplikasi kepegawaian (login itu di sistem kepegawaian Anda, bukan di PortalSifast).
+
+Untuk **dapat nama user (dan data lain)** setelah pegawai login dengan NIK di aplikasi kepegawaian, panggil:
+
+**GET** `/api/user?nik={nik}`  
+atau **GET** `/api/sifast/user?nik={nik}`
+
+**Headers:** `Authorization: Bearer {token}`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 10,
+    "name": "Dr. Ahmad Wijaya",
+    "email": "ahmad.wijaya@rs.example.com",
+    "simrs_nik": "123456789",
+    "phone": "08123456789",
+    "dep_id": "IT",
+    "role": "pemohon"
+  }
+}
+```
+
+Jika user dengan NIK tersebut belum ada di PortalSifast, sistem akan **auto-create** dari data Pegawai (SIMRS). Jika pegawai tidak ditemukan di SIMRS → response 404.
+
+**Contoh di React (setelah user login dengan NIK):**
+```js
+const nik = getNikFromKepegawaianLogin(); // NIK dari session/login Anda
+const res = await fetch(`${API_URL}/user?nik=${encodeURIComponent(nik)}`, {
+  headers: { 'Authorization': `Bearer ${API_TOKEN}` },
+});
+const { data } = await res.json();
+// data.name, data.email, data.dep_id, dll. untuk tampilan "Login sebagai: {data.name}"
+```
+
+---
+
 ## Endpoint
 
 Ada 2 versi endpoint:

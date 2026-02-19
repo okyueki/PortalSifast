@@ -115,7 +115,7 @@ export default function InventarisIndex({ inventaris, filters }: Props) {
                                                         ? 'Coba ubah kata kunci pencarian.'
                                                         : 'Data inventaris diambil dari SIMRS.'
                                                 }
-                                                icon={Package}
+                                                icon={<Package className="size-7" />}
                                             />
                                         </td>
                                     </tr>

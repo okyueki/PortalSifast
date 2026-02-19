@@ -344,6 +344,42 @@ class ApiTicketController extends Controller
     }
 
     /**
+     * Get data user (nama, email, dll.) berdasarkan NIK.
+     * Untuk kepegawaian: setelah user login dengan NIK di aplikasi mereka,
+     * panggil endpoint ini dengan Bearer token + query nik untuk dapat nama/dep dll.
+     * Jika user belum ada di PortalSifast, akan auto-create dari data Pegawai (SIMRS).
+     */
+    public function userByNik(Request $request): JsonResponse
+    {
+        $request->validate([
+            'nik' => ['required', 'string', 'max:50'],
+        ]);
+
+        $nik = $request->input('nik');
+        $user = $this->findOrCreateUserByNik($nik);
+
+        if (! $user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pegawai dengan NIK tersebut tidak ditemukan di SIMRS atau belum terdaftar.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'simrs_nik' => $user->simrs_nik,
+                'phone' => $user->phone,
+                'dep_id' => $user->dep_id,
+                'role' => $user->role,
+            ],
+        ]);
+    }
+
+    /**
      * Cari atau buat user berdasarkan NIK.
      * Ambil data dari Pegawai (SIMRS) jika ada.
      */

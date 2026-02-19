@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ApiTicketController;
+use App\Http\Controllers\Api\EmergencyReportController;
 use App\Models\TicketCategory;
 use App\Models\TicketPriority;
 use App\Models\TicketStatus;
@@ -23,6 +24,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware('auth:sanctum')->group(function () {
+    // Data user by NIK (nama, email, dll.) — untuk tampil "login as" di aplikasi kepegawaian
+    Route::get('/user', [ApiTicketController::class, 'userByNik']);
+
     // Buat tiket baru (identifikasi pelapor pakai NIK)
     Route::post('/tickets', [ApiTicketController::class, 'store']);
 
@@ -39,6 +43,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Endpoint untuk Frontend Kepegawaian (prefix: /api/sifast/)
     // =====================================================================
     Route::prefix('sifast')->group(function () {
+        // Data user by NIK (nama, email, dll.)
+        Route::get('/user', [ApiTicketController::class, 'userByNik']);
+
         // Tiket (dengan pagination)
         Route::get('/ticket', [ApiTicketController::class, 'indexPaginated']);
         Route::post('/ticket', [ApiTicketController::class, 'store']);
@@ -58,6 +65,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/ticket-status', fn () => response()->json(
             TicketStatus::active()->ordered()->get(['id', 'name', 'slug', 'color', 'order', 'is_closed'])
         ));
+
+        // Emergency / Panic Button
+        Route::prefix('emergency')->group(function () {
+            Route::post('/reports', [EmergencyReportController::class, 'store']);
+            Route::get('/reports', [EmergencyReportController::class, 'index']);
+            Route::get('/reports/{emergency_report}', [EmergencyReportController::class, 'show']);
+            Route::patch('/reports/{emergency_report}/cancel', [EmergencyReportController::class, 'cancel']);
+            Route::post('/reports/{emergency_report}/photo', [EmergencyReportController::class, 'uploadPhoto']);
+            Route::get('/operator/reports', [EmergencyReportController::class, 'operatorIndex']);
+            Route::patch('/operator/reports/{emergency_report}/respond', [EmergencyReportController::class, 'operatorRespond']);
+        });
     });
 });
 

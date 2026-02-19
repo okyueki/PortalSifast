@@ -1,8 +1,9 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\InventarisController;
+use App\Http\Controllers\EmergencyReportWebController;
 use App\Http\Controllers\InventarisBarangController;
+use App\Http\Controllers\InventarisController;
 use App\Http\Controllers\PegawaiController;
 use App\Http\Controllers\SlaReportController;
 use App\Http\Controllers\TicketAttachmentController;
@@ -11,9 +12,9 @@ use App\Http\Controllers\TicketCommentController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TicketSparepartItemController;
 use App\Http\Controllers\TicketVendorCostController;
-use App\Http\Controllers\UsersController;
-use App\Http\Controllers\UserPresenceController;
 use App\Http\Controllers\UserOnlineController;
+use App\Http\Controllers\UserPresenceController;
+use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -36,6 +37,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('users/{user}', [UsersController::class, 'update'])->name('users.update');
     Route::get('pegawai', [PegawaiController::class, 'index'])->name('pegawai.index');
     Route::get('reports/sla', SlaReportController::class)->name('reports.sla');
+
+    // Laporan Darurat (Emergency / Panic Button) — admin & staff
+    Route::get('emergency-reports', [EmergencyReportWebController::class, 'index'])->name('emergency-reports.index');
+    Route::get('emergency-reports/create', [EmergencyReportWebController::class, 'create'])->name('emergency-reports.create');
+    Route::post('emergency-reports', [EmergencyReportWebController::class, 'store'])->name('emergency-reports.store');
+    Route::get('emergency-reports/{emergency_report}', [EmergencyReportWebController::class, 'show'])->name('emergency-reports.show');
+    Route::patch('emergency-reports/{emergency_report}/respond', [EmergencyReportWebController::class, 'respond'])->name('emergency-reports.respond');
 
     // Inventaris CRUD
     Route::resource('inventaris', InventarisController::class)->parameters(['inventaris' => 'inventaris:no_inventaris']);
