@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import {
     LayoutGrid,
     ListTodo,
+    MessageCircle,
     PlusCircle,
     UserCircle,
     Users,
@@ -21,6 +22,7 @@ const APP_SUBTITLE = 'Panel Admin';
 
 const mainNavItems = [
     { id: 'dashboard', label: 'Dashboard', href: dashboard(), icon: LayoutGrid },
+    { id: 'chat', label: 'Chat', href: '/chat', icon: MessageCircle },
     { id: 'tickets', label: 'Daftar Tiket', href: '/tickets', icon: ListTodo },
     { id: 'tickets-create', label: 'Buat Tiket', href: '/tickets/create', icon: PlusCircle },
     { id: 'reports-sla', label: 'Laporan SLA', href: '/reports/sla', icon: BarChart3 },
@@ -75,15 +77,17 @@ export function TemplateSidebar() {
                     </p>
                     {mainNavItems.map((item) => {
                         const isActive =
-                            item.href === '/tickets'
-                                ? isTicketListActive(currentUrl)
-                                : item.href === '/tickets/create'
-                                  ? isTicketCreateActive(currentUrl)
-                                  : item.href === '/inventaris'
-                                    ? currentUrl === '/inventaris' || /^\/inventaris\/[^/]+/.test(currentUrl)
-                                    : item.href === '/emergency-reports'
-                                      ? currentUrl === '/emergency-reports' || /^\/emergency-reports\/.+/.test(currentUrl)
-                                      : isCurrentUrl(item.href);
+                            item.href === '/chat'
+                                ? currentUrl === '/chat' || /^\/chat\/\d+/.test(currentUrl)
+                                : item.href === '/tickets'
+                                  ? isTicketListActive(currentUrl)
+                                  : item.href === '/tickets/create'
+                                    ? isTicketCreateActive(currentUrl)
+                                    : item.href === '/inventaris'
+                                      ? currentUrl === '/inventaris' || /^\/inventaris\/[^/]+/.test(currentUrl)
+                                      : item.href === '/emergency-reports'
+                                        ? currentUrl === '/emergency-reports' || /^\/emergency-reports\/.+/.test(currentUrl)
+                                        : isCurrentUrl(item.href);
                         return (
                             <Link
                                 key={item.id}

@@ -3,9 +3,8 @@
 namespace App\Broadcasting;
 
 use App\Models\User;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannels;
+use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 
 class UserOnlineEvent implements ShouldBroadcast
@@ -23,7 +22,7 @@ class UserOnlineEvent implements ShouldBroadcast
      */
     public function broadcastOn()
     {
-        return new PresenceChannels('presence.users');
+        return [new PresenceChannel('presence.users')];
     }
 
     /**

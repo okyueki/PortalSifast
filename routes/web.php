@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmergencyReportWebController;
 use App\Http\Controllers\InventarisBarangController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\TicketVendorCostController;
 use App\Http\Controllers\UserOnlineController;
 use App\Http\Controllers\UserPresenceController;
 use App\Http\Controllers\UsersController;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -28,6 +30,9 @@ Route::get('/', function () {
 Route::get('dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
+
+// Broadcast auth untuk private channel (chat)
+Broadcast::routes(['middleware' => ['web', 'auth']]);
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('users', [UsersController::class, 'index'])->name('users.index');
@@ -92,6 +97,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // User Online Page
     Route::get('users/online', [UserOnlineController::class, 'index'])->name('users.online');
     Route::get('api/users-online', [UserOnlineController::class, 'api'])->name('api.users-online');
+
+    // Chat
+    Route::get('chat', [ChatController::class, 'index'])->name('chat.index');
+    Route::post('chat', [ChatController::class, 'store'])->name('chat.store');
+    Route::get('chat/{conversation}', [ChatController::class, 'show'])->name('chat.show');
+    Route::post('chat/{conversation}/messages', [ChatController::class, 'storeMessage'])->name('chat.messages.store');
 });
 
 require __DIR__.'/settings.php';

@@ -105,6 +105,57 @@ class EmergencyReportController extends Controller
     }
 
     /**
+     * Get lokasi petugas untuk korban (polling). Hanya pemilik laporan (NIK) yang boleh akses.
+     */
+    public function officerLocation(Request $request, EmergencyReport $emergency_report): JsonResponse
+    {
+        $request->validate(['nik' => ['required', 'string']]);
+        $nik = $request->input('nik');
+
+        $user = User::where('simrs_nik', $nik)->first();
+        if (! $user || $emergency_report->user_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Laporan tidak ditemukan atau tidak dapat diakses.',
+            ], 404);
+        }
+
+        $emergency_report->load('assignedOperator');
+        $operator = $emergency_report->assignedOperator;
+        $latestLocation = $emergency_report->officerLocations()->latest()->first();
+
+        $locationData = null;
+        $etaMinutes = null;
+        $distanceMeters = null;
+        if ($latestLocation) {
+            $locationData = [
+                'latitude' => (float) $latestLocation->latitude,
+                'longitude' => (float) $latestLocation->longitude,
+                'updated_at' => $latestLocation->updated_at->toIso8601String(),
+            ];
+            $etaMinutes = $latestLocation->eta_minutes;
+            $distanceMeters = $latestLocation->distance_meters;
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'officer' => $operator ? [
+                    'id' => $operator->id,
+                    'name' => $operator->name,
+                    'simrs_nik' => $operator->simrs_nik,
+                    'dep_id' => $operator->dep_id,
+                    'phone' => $operator->phone,
+                ] : null,
+                'location' => $locationData,
+                'eta_minutes' => $etaMinutes,
+                'distance_meters' => $distanceMeters,
+                'status' => $emergency_report->status,
+            ],
+        ]);
+    }
+
+    /**
      * Daftar riwayat laporan milik NIK (dengan pagination & filter).
      */
     public function index(Request $request): JsonResponse

@@ -4,16 +4,21 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, TwoFactorAuthenticatable;
+
+    /**
+     * dep_id yang dianggap sebagai petugas emergency (bisa update lokasi, login officer).
+     */
+    public const OFFICER_DEP_IDS = ['DRIVER', 'IGD'];
 
     /**
      * The attributes that are mass assignable.
@@ -25,6 +30,7 @@ class User extends Authenticatable
         'email',
         'password',
         'simrs_nik',
+        'badge_id',
         'phone',
         'source',
         'role',
@@ -136,5 +142,40 @@ class User extends Authenticatable
         }
 
         return $this->dep_id === $depId;
+    }
+
+    // ==================== OFFICER (EMERGENCY TRACKING) ====================
+
+    /**
+     * Apakah user ini petugas emergency (bisa login officer, update lokasi GPS).
+     */
+    public function isOfficer(): bool
+    {
+        return $this->role === 'staff' && in_array($this->dep_id, self::OFFICER_DEP_IDS, true);
+    }
+
+    /**
+     * Scope: hanya user yang role staff dan dep_id petugas emergency.
+     */
+    public function scopeOfficers($query)
+    {
+        return $query->where('role', 'staff')->whereIn('dep_id', self::OFFICER_DEP_IDS);
+    }
+
+    public function officerLocations(): HasMany
+    {
+        return $this->hasMany(OfficerLocation::class, 'officer_id');
+    }
+
+    // ==================== CHAT ====================
+
+    public function conversations(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Conversation::class, 'conversation_user')->withTimestamps();
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(Message::class);
     }
 }

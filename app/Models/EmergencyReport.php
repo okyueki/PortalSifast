@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class EmergencyReport extends Model
@@ -93,6 +94,11 @@ class EmergencyReport extends Model
     public function assignedOperator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_operator_id');
+    }
+
+    public function officerLocations(): HasMany
+    {
+        return $this->hasMany(OfficerLocation::class, 'emergency_report_id');
     }
 
     public function getRouteKeyName(): string

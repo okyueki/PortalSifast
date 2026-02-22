@@ -40,6 +40,8 @@ return [
                 'port' => env('REVERB_PORT', 443),
                 'scheme' => env('REVERB_SCHEME', 'https'),
                 'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
+                // Host for browser WebSocket (default: use request host). Set REVERB_CLIENT_HOST if different.
+                'client_host' => env('REVERB_CLIENT_HOST'),
             ],
             'client_options' => [
                 // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html

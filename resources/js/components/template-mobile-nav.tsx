@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import {
     LayoutGrid,
     ListTodo,
+    MessageCircle,
     PlusCircle,
     UserCircle,
     Users,
@@ -27,6 +28,7 @@ const APP_SUBTITLE = 'Panel Admin';
 
 const mainNavItems = [
     { id: 'dashboard', label: 'Dashboard', href: dashboard(), icon: LayoutGrid },
+    { id: 'chat', label: 'Chat', href: '/chat', icon: MessageCircle },
     { id: 'tickets', label: 'Daftar Tiket', href: '/tickets', icon: ListTodo },
     { id: 'tickets-create', label: 'Buat Tiket', href: '/tickets/create', icon: PlusCircle },
     { id: 'reports-sla', label: 'Laporan SLA', href: '/reports/sla', icon: BarChart3 },

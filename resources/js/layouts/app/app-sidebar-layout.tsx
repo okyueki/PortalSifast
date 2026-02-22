@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { PresenceProvider } from '@/contexts/presence-context';
 import { FlashMessage } from '@/components/flash-message';
 import { TemplateHeader } from '@/components/template-header';
 import { TemplateMobileNav } from '@/components/template-mobile-nav';
@@ -12,6 +13,7 @@ export default function AppSidebarLayout({
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     return (
+        <PresenceProvider>
         <div className="min-h-screen bg-background">
             <FlashMessage />
             <TemplateSidebar />
@@ -27,5 +29,6 @@ export default function AppSidebarLayout({
                 <div className="p-4 md:p-6">{children}</div>
             </main>
         </div>
+        </PresenceProvider>
     );
 }

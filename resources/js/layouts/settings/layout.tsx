@@ -37,6 +37,11 @@ const sidebarNavItems: NavItem[] = [
         href: '/settings/sync-users',
         icon: null,
     },
+    {
+        title: 'Status WebSocket',
+        href: '/settings/websocket-status',
+        icon: null,
+    },
 ];
 
 export default function SettingsLayout({ children }: PropsWithChildren) {

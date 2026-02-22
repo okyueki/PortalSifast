@@ -4,7 +4,6 @@ namespace App\Broadcasting;
 
 use App\Models\User;
 use Illuminate\Broadcasting\Channel;
-use Illuminate\Broadcasting\PresenceChannels;
 
 class UserPresenceChannel
 {

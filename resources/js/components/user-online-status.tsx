@@ -1,4 +1,4 @@
-import { useUserPresence } from '@/hooks/use-user-presence';
+import { usePresence } from '@/contexts/presence-context';
 import { Users, Wifi, WifiOff } from 'lucide-react';
 import { useState } from 'react';
 
@@ -11,7 +11,7 @@ interface OnlineUser {
 }
 
 export default function UserOnlineStatus() {
-  const { users, count, online } = useUserPresence();
+  const { users, count, online } = usePresence();
   const [showDetails, setShowDetails] = useState(false);
 
   const getUserInitial = (name: string) => {

@@ -6,10 +6,11 @@ import '../css/app.css';
 import { initializeTheme } from './hooks/use-appearance';
 import './echo.js';
 
-// Add Echo to global window type
+// Add Echo and Reverb config to global window type
 declare global {
   interface Window {
     Echo: any;
+    REVERB_CONFIG?: { key: string; host: string; port: number; scheme: string } | null;
   }
 }
 

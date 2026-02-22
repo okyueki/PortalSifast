@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\ApiTicketController;
 use App\Http\Controllers\Api\EmergencyReportController;
+use App\Http\Controllers\Api\OfficerAuthController;
+use App\Http\Controllers\Api\OfficerLocationController;
 use App\Models\TicketCategory;
 use App\Models\TicketPriority;
 use App\Models\TicketStatus;
@@ -71,13 +73,22 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/reports', [EmergencyReportController::class, 'store']);
             Route::get('/reports', [EmergencyReportController::class, 'index']);
             Route::get('/reports/{emergency_report}', [EmergencyReportController::class, 'show']);
+            Route::get('/reports/{emergency_report}/officer-location', [EmergencyReportController::class, 'officerLocation']);
             Route::patch('/reports/{emergency_report}/cancel', [EmergencyReportController::class, 'cancel']);
             Route::post('/reports/{emergency_report}/photo', [EmergencyReportController::class, 'uploadPhoto']);
             Route::get('/operator/reports', [EmergencyReportController::class, 'operatorIndex']);
             Route::patch('/operator/reports/{emergency_report}/respond', [EmergencyReportController::class, 'operatorRespond']);
         });
+
+        // Officer Tracking (petugas emergency) — butuh token dari login officer
+        Route::prefix('officer')->middleware('officer')->group(function () {
+            Route::post('/location', [OfficerLocationController::class, 'store']);
+        });
     });
 });
+
+// Officer login (tanpa auth — mengembalikan token)
+Route::post('/sifast/officer/auth/login', [OfficerAuthController::class, 'login']);
 
 // Test endpoint (tanpa auth) untuk cek API berjalan
 Route::get('/health', function () {

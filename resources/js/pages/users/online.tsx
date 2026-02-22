@@ -3,7 +3,8 @@ import { Users, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
-import { useUserPresence } from '@/hooks/use-user-presence';
+import { usePresence } from '@/contexts/presence-context';
+import { useWebSocketStatus } from '@/hooks/use-websocket-status';
 import { useState, useEffect } from 'react';
 
 interface OnlineUser {
@@ -21,19 +22,33 @@ interface Props {
 }
 
 export default function UserOnlinePage({ onlineUsers: initialUsers, onlineCount: initialCount, timestamp }: Props) {
-    const { users, count, online } = useUserPresence();
+    const { users, count, online } = usePresence();
+    const wsStatus = useWebSocketStatus();
     const [isRefreshing, setIsRefreshing] = useState(false);
+    // Data dari server (untuk fallback saat real-time mati + setelah klik Refresh)
+    const [serverUsers, setServerUsers] = useState<OnlineUser[]>(initialUsers);
+    const [serverCount, setServerCount] = useState(initialCount);
+    const [serverTimestamp, setServerTimestamp] = useState(timestamp);
 
-    // Use real-time data if available, fallback to server data
-    const displayUsers = users.length > 0 ? users : initialUsers;
-    const displayCount = users.length > 0 ? users.length : initialCount;
+    useEffect(() => {
+        setServerUsers(initialUsers);
+        setServerCount(initialCount);
+        setServerTimestamp(timestamp);
+    }, [initialUsers, initialCount, timestamp]);
+
+    // Prioritas: data real-time (Echo) kalau connected, else data server
+    const displayUsers = online ? users : serverUsers;
+    const displayCount = online ? count : serverCount;
+    const realtimeActive = wsStatus.state === 'connected';
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
         try {
             const response = await fetch('/api/users-online');
             const data = await response.json();
-            // Data will be updated via real-time anyway
+            setServerUsers(data.users ?? []);
+            setServerCount(data.count ?? 0);
+            setServerTimestamp(data.timestamp ?? new Date().toISOString());
         } catch (error) {
             console.error('Failed to refresh:', error);
         } finally {
@@ -66,6 +81,19 @@ export default function UserOnlinePage({ onlineUsers: initialUsers, onlineCount:
             <Head title="User Online" />
 
             <div className="space-y-6">
+                {/* Banner saat real-time tidak aktif */}
+                {!realtimeActive && wsStatus.state !== 'initializing' && (
+                    <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+                        <WifiOff className="h-5 w-5 shrink-0" />
+                        <div>
+                            <p className="font-medium">Koneksi real-time tidak aktif</p>
+                            <p className="text-amber-700 dark:text-amber-300 mt-0.5">
+                                Data di bawah dari server (user aktif dalam 5 menit terakhir). Gunakan tombol Refresh untuk memperbarui.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
@@ -126,10 +154,10 @@ export default function UserOnlinePage({ onlineUsers: initialUsers, onlineCount:
                         </CardHeader>
                         <CardContent>
                             <div className="text-lg font-semibold">
-                                {new Date(timestamp).toLocaleTimeString('id-ID')}
+                                {new Date(serverTimestamp).toLocaleTimeString('id-ID')}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Server timestamp
+                                {realtimeActive ? 'Real-time' : 'Data server'}
                             </p>
                         </CardContent>
                     </Card>

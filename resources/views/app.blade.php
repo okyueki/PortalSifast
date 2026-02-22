@@ -39,6 +39,28 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700" rel="stylesheet" />
 
+        {{-- Reverb/WebSocket config from Laravel (avoids Vite env not expanding .env vars) --}}
+        @if(config('broadcasting.default') === 'reverb')
+        @php
+            // Browser must connect to a host it can reach (same as page or REVERB_CLIENT_HOST).
+            // 0.0.0.0 is server bind only, not valid for client. Strip port; wsPort is set separately.
+            $reverbHost = config('broadcasting.connections.reverb.options.client_host')
+                ?? request()->getHost();
+            $reverbHost = str_contains($reverbHost, ':') ? explode(':', $reverbHost)[0] : $reverbHost;
+            $reverbConfig = [
+                'key' => config('broadcasting.connections.reverb.key'),
+                'host' => $reverbHost,
+                'port' => (int) config('broadcasting.connections.reverb.options.port', 8080),
+                'scheme' => config('broadcasting.connections.reverb.options.scheme') ?? 'http',
+            ];
+        @endphp
+        <script>
+            window.REVERB_CONFIG = @json($reverbConfig);
+        </script>
+        @else
+        <script>window.REVERB_CONFIG = null;</script>
+        @endif
+
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx'])
         @inertiaHead

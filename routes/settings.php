@@ -31,6 +31,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('settings/appearance');
     })->name('appearance.edit');
 
+    Route::get('settings/websocket-status', function () {
+        return Inertia::render('settings/websocket-status');
+    })->name('settings.websocket-status');
+
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');
 

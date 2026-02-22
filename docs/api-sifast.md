@@ -1,7 +1,7 @@
 # API Sifast – Referensi Frontend
 
 **Versi:** 1.0  
-**Base URL:** `https://your-domain.com/api` (tanpa `/v1`)  
+**Base URL:** `http://192.168.15.250:7001/api` (tanpa `/v1`)  
 **Format:** JSON  
 **Auth:** Bearer Token (Laravel Sanctum)
 
@@ -10,14 +10,14 @@ Dokumen ini menyatukan **semua endpoint API** yang dipakai frontend Sifast (apli
 **Status Implementasi:**
 - ✅ **Ticketing & User:** Sudah tersedia dan berjalan
 - ✅ **Emergency Reports:** Sudah tersedia dan berjalan
-- ⚠️ **Officer Tracking:** Spesifikasi siap, backend belum diimplementasikan
+- ✅ **Officer Tracking:** Sudah diimplementasikan (login officer, update lokasi, get officer-location)
 
 **Catatan untuk Developer Frontend:**
 1. Semua endpoint memerlukan **Bearer Token** di header `Authorization: Bearer {token}`. Token di-generate sekali di PortalSifast server menggunakan `php artisan api:token:generate kepegawaian-app`.
 2. User diidentifikasi dengan **NIK** (bukan login ke PortalSifast). Untuk endpoint yang memerlukan identitas user, selalu kirim `nik` sebagai query parameter atau di request body.
 3. Format response konsisten: `{ "success": true|false, "data": {...}, "message": "...", "errors": {...} }`.
 4. Untuk detail lengkap endpoint ticketing, lihat `docs/API-TICKETING.md`.
-5. Endpoint Officer Tracking (Section 4) belum tersedia di backend; frontend bisa mulai prepare UI/UX, tapi endpoint belum bisa dipanggil.
+5. Endpoint Officer Tracking (Section 4) sudah tersedia; petugas bisa login via NIK/badge_id + password, update lokasi GPS, dan korban bisa polling GET officer-location.
 
 ---
 
@@ -384,7 +384,7 @@ Endpoint untuk dashboard operator. Otorisasi: hanya user dengan role **admin** a
 
 ## 4. Fitur Tracking Petugas Real-time (seperti Gojek)
 
-**Status backend:** ⚠️ **Belum diimplementasikan.** Spesifikasi ini untuk pengembangan selanjutnya. Frontend bisa mulai prepare UI/UX, tapi endpoint belum tersedia di backend.
+**Status backend:** ✅ **Sudah diimplementasikan.** Controller: `App\Http\Controllers\Api\OfficerAuthController`, `OfficerLocationController`; model: `App\Models\OfficerLocation`; migration: `officer_locations`, kolom `users.badge_id`.
 
 Fitur ini memungkinkan korban melihat posisi petugas yang bergerak menuju lokasi secara real-time. Petugas menggunakan aplikasi mobile terpisah untuk update lokasi GPS.
 
