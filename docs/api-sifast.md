@@ -1,7 +1,7 @@
 # API Sifast – Referensi Frontend
 
 **Versi:** 1.0  
-**Base URL:** `http://192.168.15.250:7001/api` (tanpa `/v1`)  
+**Base URL:** `https://portalsifast.rsaisyiyahsitifatimah.com/api` (tanpa `/v1`)  
 **Format:** JSON  
 **Auth:** Bearer Token (Laravel Sanctum)
 
@@ -12,12 +12,17 @@ Dokumen ini menyatukan **semua endpoint API** yang dipakai frontend Sifast (apli
 - ✅ **Emergency Reports:** Sudah tersedia dan berjalan
 - ✅ **Officer Tracking:** Sudah diimplementasikan (login officer, update lokasi, get officer-location)
 
+**Login & pengguna:**
+- **Login yang dipakai:** login yang **sudah ada** di PortalSifast (email + password, Laravel Fortify). Tidak ada login terpisah untuk internal.
+- **Pengguna:** hanya **internal rumah sakit** — pelapor dan petugas, semuanya dari tabel **`users`** (`App\Models\User`).
+- **Petugas (officer):** user dengan `role = 'staff'` dan `dep_id` ∈ **`User::OFFICER_DEP_IDS`** = `['DRIVER', 'IGD']`. Mereka login dengan akun yang sama (email + password); hak "petugas" ditentukan oleh unit/dep_id.
+
 **Catatan untuk Developer Frontend:**
-1. Semua endpoint memerlukan **Bearer Token** di header `Authorization: Bearer {token}`. Token di-generate sekali di PortalSifast server menggunakan `php artisan api:token:generate kepegawaian-app`.
-2. User diidentifikasi dengan **NIK** (bukan login ke PortalSifast). Untuk endpoint yang memerlukan identitas user, selalu kirim `nik` sebagai query parameter atau di request body.
+1. Semua endpoint memerlukan **Bearer Token** di header `Authorization: Bearer {token}`. Token di-generate sekali di PortalSifast server menggunakan `php artisan api:token:generate kepegawaian-app` (untuk aplikasi eksternal), atau didapat dari **login biasa** (email + password) untuk pengguna internal.
+2. User diidentifikasi dengan **NIK** di API eksternal (query/body). Untuk pengguna internal, identitas dari session/token login yang ada.
 3. Format response konsisten: `{ "success": true|false, "data": {...}, "message": "...", "errors": {...} }`.
 4. Untuk detail lengkap endpoint ticketing, lihat `docs/API-TICKETING.md`.
-5. Endpoint Officer Tracking (Section 4) sudah tersedia; petugas bisa login via NIK/badge_id + password, update lokasi GPS, dan korban bisa polling GET officer-location.
+5. Officer Tracking (Section 4): petugas internal pakai **login yang ada**; endpoint login NIK/badge_id tersedia untuk integrasi eksternal (mis. aplikasi mobile).
 
 ---
 
@@ -29,10 +34,10 @@ Semua endpoint memerlukan header:
 Authorization: Bearer {token}
 ```
 
-- **Token** di-generate sekali di PortalSifast (`php artisan api:token:generate kepegawaian-app`), disimpan di aplikasi frontend (env).
-- **Tidak ada login per user** ke PortalSifast. User diidentifikasi dengan **NIK** (dari login di aplikasi kepegawaian).
-- Untuk endpoint yang butuh identitas user (tiket milik siapa, laporan darurat dari siapa): selalu kirim **`nik`** (query atau body).
-- **Untuk petugas (officer):** Ada endpoint login khusus dengan **NIK** (atau badge_id jika sudah ada di users) + password, dapat token Sanctum untuk akses endpoint officer. Petugas adalah user yang sudah ada dengan `role` = `'staff'` dan `dep_id` = `'DRIVER'` atau `'IGD'`.
+- **Token** di-generate sekali di PortalSifast (`php artisan api:token:generate kepegawaian-app`) untuk aplikasi eksternal, atau didapat dari **login yang ada** (email + password) untuk pengguna internal.
+- **Login internal:** satu login saja (email + password). Semua user — pelapor maupun petugas — dari tabel **`users`**. Petugas = user dengan `role` = `'staff'` dan `dep_id` ∈ **`['DRIVER', 'IGD']`** (konstanta `User::OFFICER_DEP_IDS`).
+- Untuk endpoint yang butuh identitas user (tiket, laporan darurat): kirim **`nik`** (query/body) untuk API eksternal; untuk internal, identitas dari token/session login.
+- **Officer (petugas):** Untuk akses internal, petugas login seperti user biasa; token dari login itu dipakai untuk endpoint officer. Untuk integrasi eksternal (mis. app mobile), tersedia endpoint **POST /api/sifast/officer/auth/login** dengan NIK/badge_id + password.
 
 Detail lengkap: lihat **`docs/API-TICKETING.md`** bagian Autentikasi dan "Login dan Get Nama User".
 
@@ -386,26 +391,28 @@ Endpoint untuk dashboard operator. Otorisasi: hanya user dengan role **admin** a
 
 **Status backend:** ✅ **Sudah diimplementasikan.** Controller: `App\Http\Controllers\Api\OfficerAuthController`, `OfficerLocationController`; model: `App\Models\OfficerLocation`; migration: `officer_locations`, kolom `users.badge_id`.
 
-Fitur ini memungkinkan korban melihat posisi petugas yang bergerak menuju lokasi secara real-time. Petugas menggunakan aplikasi mobile terpisah untuk update lokasi GPS.
+Fitur ini memungkinkan korban melihat posisi petugas yang bergerak menuju lokasi secara real-time. Petugas = user dari tabel **`users`** dengan **`dep_id` ∈ `User::OFFICER_DEP_IDS`** = **`['DRIVER', 'IGD']`**.
+
+**Login:**
+- **Internal (PortalSifast):** Petugas pakai **login yang ada** (email + password). Token dari login itu dipakai untuk akses endpoint officer (update lokasi, dll.).
+- **Eksternal (mis. app mobile):** Tersedia **POST /api/sifast/officer/auth/login** dengan NIK atau badge_id + password untuk dapat token Sanctum.
 
 **Pola yang diselaraskan:**
 - Base path: `/api/sifast/officer` (konsisten dengan `/api/sifast/emergency`).
-- Auth: Sanctum Bearer Token (sama seperti fitur lain).
+- Auth: Sanctum Bearer Token (dari login biasa untuk internal, atau dari officer/auth/login untuk eksternal).
 - Response: `{ "success": true, "data": {...}, "message": "..." }`.
-- Petugas login dengan `badge_id` + password, dapat Sanctum token untuk akses endpoint officer.
 
 ---
 
-### 4.1 [OFFICER] Login Petugas
+### 4.1 [OFFICER] Login Petugas (opsional — untuk integrasi eksternal)
 
 **POST** `/api/sifast/officer/auth/login`
 
-Petugas login dengan **NIK** (atau badge_id jika sudah ada di users) dan password, dapat Sanctum token untuk akses endpoint officer.
+Digunakan oleh **aplikasi eksternal** (mis. mobile petugas) yang hanya punya NIK/badge_id. Untuk **penggunaan internal**, petugas cukup pakai **login yang ada** (email + password); token dari login itu dipakai untuk endpoint officer.
 
-**Catatan:** Petugas adalah **User** yang sudah ada di PortalSifast dengan:
-- `role` = `'staff'` (atau role khusus `'driver'`, `'igd'` jika ditambahkan)
-- `dep_id` = `'DRIVER'` atau `'IGD'` (atau departemen khusus untuk petugas emergency)
-- Bisa juga pakai user dengan `dep_id` = `'IT'`, `'IPS'` jika mereka juga menangani emergency
+**Catatan:** Petugas adalah **User** yang sudah ada di tabel `users` dengan:
+- `role` = `'staff'`
+- `dep_id` ∈ **`User::OFFICER_DEP_IDS`** = **`['DRIVER', 'IGD']`** (hanya unit ini yang dianggap petugas emergency)
 
 #### Request Body
 
@@ -663,8 +670,8 @@ Saat diimplementasikan, bisa mengikuti konfigurasi Laravel yang ada:
 | Aspek | Yang sudah ada (Ticketing) | Emergency (sudah ada) | Officer Tracking (spesifikasi) |
 |-------|----------------------------|----------------------|--------------------------------|
 | Base URL | `/api`, `/api/sifast` | `/api/sifast/emergency` | `/api/sifast/officer` |
-| Auth | Bearer token (Sanctum) | Sama | Sama (token dari login badge_id) |
-| Identitas user | `nik` (query/body) | `nik` (query/body) | Token officer (dari login NIK/badge_id) |
+| Auth | Bearer token (Sanctum) | Sama | Sama (token dari login biasa untuk internal) |
+| Identitas user | `nik` (query/body) | `nik` (query/body) | Token (login biasa untuk internal; login NIK/badge_id untuk eksternal) |
 | Response | `success`, `data`, `message`, `errors` | Sama | Sama |
 | Pagination | `data` + `meta` | Sama | Tidak ada (real-time) |
 | User auto-create | By NIK dari SIMRS | Bisa pakai mekanisme yang sama | Petugas = user yang sudah ada (role 'staff', dep_id 'DRIVER'/'IGD') |
@@ -674,8 +681,8 @@ Saat diimplementasikan, bisa mengikuti konfigurasi Laravel yang ada:
 1. **Base URL:** Frontend minta `/v1` atau `/emergency/reports` tanpa prefix. Di sini diselaraskan jadi `/api/sifast/emergency` dan `/api/sifast/officer` (konsisten dengan ticketing).
 2. **NIK di Emergency Reports:** Frontend spec tidak pakai NIK di body. Di sini **tetap pakai NIK** (selaras dengan ticketing) untuk identifikasi pelapor dan auto-create user dari SIMRS.
 3. **Auth:** Frontend spec pakai "JWT" (tidak spesifik). Di sini **tetap Sanctum** (sudah terpasang di PortalSifast).
-4. **Officer Login:** Frontend minta `/officer/auth/login` dengan badge_id. Di sini diselaraskan jadi `/api/sifast/officer/auth/login` dengan **NIK** (atau badge_id jika sudah ada di users) — konsisten dengan pola identifikasi user pakai NIK.
-5. **Petugas = User yang sudah ada:** Frontend spec minta tabel `officers` terpisah. Di sini **petugas pakai tabel `users` yang sudah ada** dengan role `'staff'` dan `dep_id` = `'DRIVER'` atau `'IGD'` (atau departemen lain seperti `'IT'`, `'IPS'` jika mereka juga menangani emergency). Tidak perlu tabel `officers` terpisah.
+4. **Officer Login:** Untuk **internal** dipakai **login yang ada** (email + password). Endpoint `/api/sifast/officer/auth/login` (NIK/badge_id + password) tersedia untuk **integrasi eksternal** (mis. aplikasi mobile).
+5. **Petugas = User yang sudah ada:** Petugas pakai tabel **`users`** dengan `role` = `'staff'` dan `dep_id` ∈ **`User::OFFICER_DEP_IDS`** = **`['DRIVER', 'IGD']`** saja. Tidak ada tabel `officers` terpisah.
 6. **Officer Location:** Frontend minta `/officer/location`. Di sini jadi `/api/sifast/officer/location` (konsisten).
 
 Dokumen ini **tidak mengubah** kontrak API ticketing dan emergency reports yang sudah berjalan; hanya menambah spesifikasi officer tracking agar selaras dan siap diimplementasikan di backend yang sama.
