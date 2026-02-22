@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ApiTicketController;
 use App\Http\Controllers\Api\EmergencyReportController;
+use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\OfficerAuthController;
 use App\Http\Controllers\Api\OfficerLocationController;
 use App\Models\TicketCategory;
@@ -86,6 +87,9 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     });
 });
+
+// Login email + password (untuk frontend eksternal, mis. Sifast)
+Route::post('/login', LoginController::class);
 
 // Officer login (tanpa auth — mengembalikan token)
 Route::post('/sifast/officer/auth/login', [OfficerAuthController::class, 'login']);
