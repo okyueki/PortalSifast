@@ -63,6 +63,7 @@ export default function TicketCreate({
         asset_no_inventaris: null as string | null,
         tag_ids: [] as number[],
         requester_id: null as number | null,
+        created_at: '' as string,
     });
 
     const [filteredCategories, setFilteredCategories] = useState<TicketCategory[]>([]);
@@ -127,6 +128,7 @@ export default function TicketCreate({
                 }
                 payload.asset_no_inventaris = formData.asset_no_inventaris || null;
                 payload.tag_ids = Array.isArray(formData.tag_ids) ? formData.tag_ids : [];
+                payload.created_at = formData.created_at && String(formData.created_at).trim() ? formData.created_at : null;
                 return payload;
             },
         });
@@ -429,6 +431,24 @@ export default function TicketCreate({
                             maxLength={10000}
                         />
                         <InputError message={errors.description} />
+                    </div>
+
+                    {/* Tanggal & waktu lapor (backdate) */}
+                    <div className="grid gap-2">
+                        <Label htmlFor="created_at">
+                            Tanggal & waktu lapor (opsional)
+                        </Label>
+                        <Input
+                            id="created_at"
+                            type="datetime-local"
+                            value={data.created_at}
+                            onChange={(e) => setData('created_at', e.target.value)}
+                            className="max-w-xs"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Kosongkan = waktu sekarang. Isi jika tiket dilaporkan/terjadi di waktu lalu (backdate).
+                        </p>
+                        <InputError message={errors.created_at} />
                     </div>
 
                     {/* Development Notice */}

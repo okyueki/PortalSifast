@@ -65,13 +65,14 @@ class DashboardController extends Controller
             ->toArray();
 
         $recentTickets = (clone $baseQuery)
+            ->open()
             ->with(['type', 'category', 'priority', 'status', 'requester', 'assignee'])
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
 
         $overdueTickets = $user->isStaff() || $user->isAdmin()
-            ? (clone $baseQuery)->overdue()
+            ? (clone $baseQuery)->open()->overdue()
                 ->with(['type', 'category', 'priority', 'status', 'requester', 'assignee'])
                 ->orderBy('resolution_due_at')
                 ->limit(5)

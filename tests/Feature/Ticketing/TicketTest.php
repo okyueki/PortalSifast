@@ -6,8 +6,11 @@ use App\Models\TicketPriority;
 use App\Models\TicketStatus;
 use App\Models\TicketType;
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 
 beforeEach(function () {
+    $this->withoutMiddleware(ValidateCsrfToken::class);
+
     // Create master data needed for tickets
     $this->type = TicketType::factory()->incident()->create();
     $this->category = TicketCategory::factory()->it()->create(['ticket_type_id' => $this->type->id]);

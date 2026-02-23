@@ -34,6 +34,7 @@ class StoreTicketRequest extends FormRequest
             'asset_no_inventaris' => ['nullable', 'string', 'max:50'],
             'tag_ids' => ['nullable', 'array'],
             'tag_ids.*' => ['integer', Rule::exists('ticket_tags', 'id')->where('is_active', true)],
+            'created_at' => ['nullable', 'date'],
         ];
 
         // Admin dapat memilih pemohon secara manual
@@ -78,6 +79,7 @@ class StoreTicketRequest extends FormRequest
             'ticket_priority_id' => 'prioritas tiket',
             'title' => 'judul',
             'description' => 'deskripsi',
+            'created_at' => 'tanggal & waktu lapor',
         ];
     }
 }

@@ -18,6 +18,8 @@ use App\Notifications\TicketAssignedNotification;
 use App\Notifications\TicketCreatedNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response as ResponseFacade;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -307,6 +309,14 @@ class TicketController extends Controller
 
         if (! empty($validated['tag_ids'])) {
             $ticket->tags()->sync($validated['tag_ids']);
+        }
+
+        if (! empty($validated['created_at'])) {
+            $backdate = Carbon::parse($validated['created_at']);
+            DB::table('tickets')
+                ->where('id', $ticket->id)
+                ->update(['created_at' => $backdate->format('Y-m-d H:i:s')]);
+            $ticket->refresh();
         }
 
         // Log activity
