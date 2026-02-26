@@ -169,3 +169,26 @@
 .bg-gradient-card-amber {
     background: var(--gradient-card-amber);
 }
+
+/* Catatan Kerja (referensi kanban-love-notes): scrollbar & fade-in */
+@layer utilities {
+    .scrollbar-thin {
+        scrollbar-width: thin;
+        scrollbar-color: var(--border) transparent;
+    }
+}
+
+@keyframes fade-in {
+    0% {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}

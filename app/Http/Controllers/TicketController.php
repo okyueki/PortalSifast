@@ -113,6 +113,40 @@ class TicketController extends Controller
     }
 
     /**
+     * Papan Kanban: daftar tiket per status (view saja, data dari Ticket).
+     */
+    public function board(Request $request): Response
+    {
+        $user = $request->user();
+
+        $query = Ticket::query()
+            ->with(['type', 'category', 'priority', 'status', 'requester', 'assignee', 'tags'])
+            ->open();
+
+        if ($user->isPemohon()) {
+            $query->where('requester_id', $user->id);
+        } elseif ($user->isStaff()) {
+            $groupIds = \App\Models\TicketGroup::whereHas('members', fn ($q) => $q->where('user_id', $user->id))->pluck('id');
+            $query->where(function ($q) use ($user, $groupIds) {
+                $q->where('dep_id', $user->dep_id)
+                    ->orWhere('assignee_id', $user->id)
+                    ->orWhere('requester_id', $user->id)
+                    ->orWhereHas('collaborators', fn ($q) => $q->where('user_id', $user->id))
+                    ->orWhereIn('ticket_group_id', $groupIds);
+            });
+        }
+
+        $tickets = $query->orderBy('updated_at', 'desc')->limit(150)->get();
+        $statuses = TicketStatus::active()->ordered()->get();
+
+        return Inertia::render('tickets/board', [
+            'tickets' => $tickets,
+            'statuses' => $statuses,
+            'canChangeStatus' => $user->isAdmin() || $user->isStaff(),
+        ]);
+    }
+
+    /**
      * Show the form for creating a new ticket.
      */
     public function create(): Response
@@ -379,13 +413,12 @@ class TicketController extends Controller
                 ->get(['id', 'name', 'dep_id']);
         }
 
-        // Get staff dari departemen lain untuk fitur rekan (collaborator)
+        // Get staff yang bisa jadi rekan (semua dept, kecuali yang sudah assignee/rekan)
         $availableCollaborators = [];
         if ($user->can('manageCollaborators', $ticket)) {
             $existingCollaboratorIds = $ticket->collaborators->pluck('user_id')->push($ticket->assignee_id)->filter()->toArray();
             $availableCollaborators = User::query()
                 ->where('role', 'staff')
-                ->where('dep_id', '!=', $ticket->dep_id)
                 ->whereNotIn('id', $existingCollaboratorIds)
                 ->orderBy('dep_id')
                 ->orderBy('name')

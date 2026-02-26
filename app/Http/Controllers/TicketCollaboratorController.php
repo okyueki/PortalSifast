@@ -13,7 +13,7 @@ class TicketCollaboratorController extends Controller
 {
     /**
      * Add a collaborator (rekan) to the ticket.
-     * Rekan = staff dari departemen lain (bukan primary assignee).
+     * Rekan = staff (boleh satu departemen atau beda), bukan primary assignee.
      */
     public function store(Request $request, Ticket $ticket): RedirectResponse
     {
@@ -34,11 +34,6 @@ class TicketCollaboratorController extends Controller
         // Jangan tambah assignee sebagai rekan
         if ($ticket->assignee_id === $userId) {
             return back()->withErrors(['user_id' => 'Assignee sudah menjadi penanggung jawab utama.']);
-        }
-
-        // Rekan harus dari departemen lain (tiket gabungan IT + IPS)
-        if ($user->dep_id === $ticket->dep_id) {
-            return back()->withErrors(['user_id' => 'Rekan harus dari departemen lain. Staff departemen sama bisa di-assign sebagai primary.']);
         }
 
         if ($ticket->collaborators()->where('user_id', $userId)->exists()) {

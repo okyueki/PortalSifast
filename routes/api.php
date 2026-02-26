@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\EmergencyReportController;
 use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\OfficerAuthController;
 use App\Http\Controllers\Api\OfficerLocationController;
+use App\Http\Controllers\Api\WorkNoteController;
 use App\Models\TicketCategory;
 use App\Models\TicketPriority;
 use App\Models\TicketStatus;
@@ -27,6 +28,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware('auth:sanctum')->group(function () {
+    // Catatan Kerja (hanya pembuat dan admin)
+    Route::apiResource('work-notes', WorkNoteController::class);
+
     // Data user by NIK (nama, email, dll.) — untuk tampil "login as" di aplikasi kepegawaian
     Route::get('/user', [ApiTicketController::class, 'userByNik']);
 

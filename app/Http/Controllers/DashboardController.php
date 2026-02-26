@@ -64,8 +64,9 @@ class DashboardController extends Controller
             ->pluck('count', 'dep_id')
             ->toArray();
 
+        // Tiket Terbaru = hanya status Baru (new)
         $recentTickets = (clone $baseQuery)
-            ->open()
+            ->whereHas('status', fn ($q) => $q->where('slug', TicketStatus::SLUG_NEW))
             ->with(['type', 'category', 'priority', 'status', 'requester', 'assignee'])
             ->orderBy('created_at', 'desc')
             ->limit(10)
@@ -79,6 +80,15 @@ class DashboardController extends Controller
                 ->get()
             : collect();
 
+        // Tiket belum diselesaikan (open, bukan status Baru — ditugaskan/in progress = belum selesai)
+        $unresolvedTickets = (clone $baseQuery)
+            ->open()
+            ->whereHas('status', fn ($q) => $q->where('slug', '!=', TicketStatus::SLUG_NEW))
+            ->with(['type', 'category', 'priority', 'status', 'requester', 'assignee'])
+            ->orderBy('updated_at', 'desc')
+            ->limit(10)
+            ->get();
+
         // Get online users statistics
         $onlineUsers = $this->userPresenceService->getOnlineUsers();
         $onlineCount = $this->userPresenceService->getOnlineUsersCount();
@@ -87,6 +97,7 @@ class DashboardController extends Controller
             'stats' => $stats,
             'recentTickets' => $recentTickets,
             'overdueTickets' => $overdueTickets,
+            'unresolvedTickets' => $unresolvedTickets,
             'onlineUsers' => [
                 'count' => $onlineCount,
                 'users' => $onlineUsers,

@@ -38,6 +38,7 @@ type Props = {
     stats: DashboardStats;
     recentTickets: TicketType[];
     overdueTickets: TicketType[];
+    unresolvedTickets: TicketType[];
     onlineUsers: {
         count: number;
         users: Array<{
@@ -65,6 +66,7 @@ export default function Dashboard({
     stats,
     recentTickets,
     overdueTickets,
+    unresolvedTickets,
     onlineUsers,
 }: Props) {
     const quickLinks = [
@@ -175,9 +177,9 @@ export default function Dashboard({
                     <UserPresenceWidget />
                 </div>
 
-                <div className="grid gap-6 lg:grid-cols-2">
-                    {/* Recent tickets */}
-                    <Card>
+                <div className="grid gap-6 lg:grid-cols-3">
+                    {/* Tiket Terbaru — hanya status Baru */}
+                    <Card className="border-yellow-200 dark:border-yellow-800/60">
                         <CardHeader className="flex flex-row items-center justify-between">
                             <CardTitle>Tiket Terbaru</CardTitle>
                             <Link
@@ -194,7 +196,7 @@ export default function Dashboard({
                                         <li key={t.id}>
                                             <Link
                                                 href={`/tickets/${t.id}`}
-                                                className="block rounded-lg border p-3 transition-colors hover:bg-muted/50"
+                                                className="block rounded-lg border border-yellow-300/60 bg-yellow-50/80 p-3 transition-colors hover:bg-yellow-100/80 dark:border-yellow-700/50 dark:bg-yellow-950/30 dark:hover:bg-yellow-900/40"
                                             >
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="font-mono text-sm font-medium">
@@ -236,27 +238,27 @@ export default function Dashboard({
                                 </ul>
                             ) : (
                                 <p className="py-8 text-center text-sm text-muted-foreground">
-                                    Belum ada tiket
+                                    Belum ada tiket dengan status Baru
                                 </p>
                             )}
                         </CardContent>
                     </Card>
 
-                    {/* Overdue tickets */}
-                    {overdueTickets.length > 0 && (
-                        <Card className="border-destructive/50">
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <CardTitle className="text-destructive">
-                                    Tiket Terlambat
-                                </CardTitle>
-                                <Link
-                                    href="/tickets?assignee=me"
-                                    className="text-sm font-medium text-primary hover:underline"
-                                >
-                                    Lihat
-                                </Link>
-                            </CardHeader>
-                            <CardContent>
+                    {/* Tiket Terlambat */}
+                    <Card className="border-destructive/50">
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <CardTitle className="text-destructive">
+                                Tiket Terlambat
+                            </CardTitle>
+                            <Link
+                                href="/tickets"
+                                className="text-sm font-medium text-primary hover:underline"
+                            >
+                                Lihat
+                            </Link>
+                        </CardHeader>
+                        <CardContent>
+                            {overdueTickets.length > 0 ? (
                                 <ul className="space-y-3">
                                     {overdueTickets.map((t) => (
                                         <li key={t.id}>
@@ -304,9 +306,79 @@ export default function Dashboard({
                                         </li>
                                     ))}
                                 </ul>
-                            </CardContent>
-                        </Card>
-                    )}
+                            ) : (
+                                <p className="py-8 text-center text-sm text-muted-foreground">
+                                    Tidak ada tiket terlambat
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Tiket Belum Diselesaikan — open/ditugaskan/in progress = belum ditutup */}
+                    <Card className="border-green-200 dark:border-green-800/60">
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <CardTitle>Tiket Belum Diselesaikan</CardTitle>
+                            <Link
+                                href="/tickets"
+                                className="text-sm font-medium text-primary hover:underline"
+                            >
+                                Lihat semua
+                            </Link>
+                        </CardHeader>
+                        <CardContent>
+                            {unresolvedTickets.length > 0 ? (
+                                <ul className="space-y-3">
+                                    {unresolvedTickets.map((t) => (
+                                        <li key={t.id}>
+                                            <Link
+                                                href={`/tickets/${t.id}`}
+                                                className="block rounded-lg border border-green-300/60 bg-green-50/80 p-3 transition-colors hover:bg-green-100/80 dark:border-green-700/50 dark:bg-green-950/30 dark:hover:bg-green-900/40"
+                                            >
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="font-mono text-sm font-medium">
+                                                        {t.ticket_number}
+                                                    </span>
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={getStatusColor(
+                                                            t.status?.color
+                                                        )}
+                                                    >
+                                                        {t.status?.name}
+                                                    </Badge>
+                                                </div>
+                                                <p className="mt-1 truncate text-sm">
+                                                    {t.title}
+                                                </p>
+                                                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                                    <span className="flex items-center gap-1">
+                                                        <UserCircle className="h-3 w-3" />
+                                                        <span className="text-foreground">{t.requester?.name || '-'}</span>
+                                                    </span>
+                                                    {t.assignee ? (
+                                                        <span className="flex items-center gap-1">
+                                                            <span className="text-muted-foreground">→</span>
+                                                            <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                                                                {t.assignee.name}
+                                                            </span>
+                                                        </span>
+                                                    ) : (
+                                                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                                            Belum ditugaskan
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </Link>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="py-8 text-center text-sm text-muted-foreground">
+                                    Tidak ada tiket belum diselesaikan
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

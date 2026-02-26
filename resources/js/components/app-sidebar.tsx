@@ -1,8 +1,11 @@
 import { Link } from '@inertiajs/react';
 import {
     BarChart3,
+    Columns3,
+    FileText,
     FolderCog,
     LayoutGrid,
+    ListFilter,
     Package,
     Ticket,
     UserCircle,
@@ -36,8 +39,23 @@ const mainNavItems: NavItem[] = [
         icon: Ticket,
     },
     {
-        title: 'Laporan SLA',
-        href: '/reports/sla',
+        title: 'Papan Tiket',
+        href: '/tickets/board',
+        icon: Columns3,
+    },
+    {
+        title: 'Status Tiket',
+        href: '/tickets/statuses',
+        icon: ListFilter,
+    },
+    {
+        title: 'Catatan Kerja',
+        href: '/catatan',
+        icon: FileText,
+    },
+    {
+        title: 'Laporan',
+        href: '/reports',
         icon: BarChart3,
     },
     {

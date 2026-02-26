@@ -178,4 +178,11 @@ class User extends Authenticatable
     {
         return $this->hasMany(Message::class);
     }
+
+    // ==================== CATATAN KERJA ====================
+
+    public function workNotes(): HasMany
+    {
+        return $this->hasMany(WorkNote::class);
+    }
 }

@@ -1,6 +1,9 @@
 import { Link } from '@inertiajs/react';
 import {
+    Columns3,
+    FileText,
     LayoutGrid,
+    ListFilter,
     ListTodo,
     MessageCircle,
     PlusCircle,
@@ -11,7 +14,6 @@ import {
     LayoutDashboard,
     Package,
     BarChart3,
-    AlertCircle,
 } from 'lucide-react';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { dashboard } from '@/routes';
@@ -24,9 +26,11 @@ const mainNavItems = [
     { id: 'dashboard', label: 'Dashboard', href: dashboard(), icon: LayoutGrid },
     { id: 'chat', label: 'Chat', href: '/chat', icon: MessageCircle },
     { id: 'tickets', label: 'Daftar Tiket', href: '/tickets', icon: ListTodo },
+    { id: 'tickets-board', label: 'Papan Tiket', href: '/tickets/board', icon: Columns3 },
+    { id: 'tickets-statuses', label: 'Status Tiket', href: '/tickets/statuses', icon: ListFilter },
     { id: 'tickets-create', label: 'Buat Tiket', href: '/tickets/create', icon: PlusCircle },
-    { id: 'reports-sla', label: 'Laporan SLA', href: '/reports/sla', icon: BarChart3 },
-    { id: 'emergency-reports', label: 'Laporan Darurat', href: '/emergency-reports', icon: AlertCircle },
+    { id: 'catatan', label: 'Catatan Kerja', href: '/catatan', icon: FileText },
+    { id: 'reports', label: 'Laporan', href: '/reports', icon: BarChart3 },
     { id: 'pegawai', label: 'Daftar Pegawai', href: '/pegawai', icon: UserCircle },
     { id: 'inventaris', label: 'Inventaris', href: '/inventaris', icon: Package },
     { id: 'users', label: 'Daftar User', href: '/users', icon: Users },
@@ -81,12 +85,16 @@ export function TemplateSidebar() {
                                 ? currentUrl === '/chat' || /^\/chat\/\d+/.test(currentUrl)
                                 : item.href === '/tickets'
                                   ? isTicketListActive(currentUrl)
-                                  : item.href === '/tickets/create'
+                                  : item.href === '/tickets/board'
+                                    ? currentUrl === '/tickets/board'
+                                    : item.href === '/tickets/create'
                                     ? isTicketCreateActive(currentUrl)
-                                    : item.href === '/inventaris'
+                                    : item.href === '/catatan'
+                                      ? currentUrl === '/catatan' || currentUrl.startsWith('/catatan?')
+                                      : item.href === '/inventaris'
                                       ? currentUrl === '/inventaris' || /^\/inventaris\/[^/]+/.test(currentUrl)
-                                      : item.href === '/emergency-reports'
-                                        ? currentUrl === '/emergency-reports' || /^\/emergency-reports\/.+/.test(currentUrl)
+                                      : item.href === '/reports'
+                                        ? currentUrl === '/reports' || /^\/reports\/.+/.test(currentUrl)
                                         : isCurrentUrl(item.href);
                         return (
                             <Link

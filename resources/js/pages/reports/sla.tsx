@@ -30,6 +30,7 @@ import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard().url },
+    { title: 'Laporan', href: '/reports' },
     { title: 'Laporan SLA', href: '/reports/sla' },
 ];
 
