@@ -1,5 +1,15 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { Building2, User, Tag, FolderOpen } from 'lucide-react';
+import {
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Cell,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from 'recharts';
+import { Building2, User, Tag, FolderOpen, AlertTriangle, BarChart3, FileText, Target, Lightbulb } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +26,15 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
+
+// Warna eksplisit agar grafik tampil konsisten (CSS --chart-* pakai oklch, bukan hsl)
+const CHART_COLORS = [
+    '#3B82F6', // blue
+    '#10B981', // emerald
+    '#8B5CF6', // violet
+    '#F59E0B', // amber
+    '#EF4444', // red
+];
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard().url },
@@ -40,9 +59,15 @@ type AssigneeRow = DepartmentRow & {
     assignee_name: string;
 };
 
+type UnitKerusakanItem = { dep_id: string; total_tickets: number };
+type InsightItem = { name: string; count: number };
+
 type Props = {
     departments: DepartmentRow[];
     byAssignee: AssigneeRow[];
+    insightsUnitKerusakan: UnitKerusakanItem[];
+    insightsTopCategories: InsightItem[];
+    insightsTopTags: InsightItem[];
     filters: { from: string; to: string; dep_id: string | null; per_petugas: boolean };
     departmentsForFilter: string[];
 };
@@ -59,6 +84,9 @@ function formatDuration(minutes: number | null): string {
 export default function DepartmentReport({
     departments,
     byAssignee,
+    insightsUnitKerusakan,
+    insightsTopCategories,
+    insightsTopTags,
     filters,
     departmentsForFilter,
 }: Props) {
@@ -78,6 +106,19 @@ export default function DepartmentReport({
         params.set('per_petugas', data.per_petugas ? '1' : '0');
         router.get(`/reports/department?${params.toString()}`);
     };
+
+    // Ringkasan untuk laporan ke direksi
+    const totalTickets = departments.reduce((s, d) => s + d.total_tickets, 0);
+    const totalResolved = departments.reduce((s, d) => s + d.resolved_count, 0);
+    const resolutionWeightedSum = departments.reduce(
+        (s, d) => s + (d.avg_resolution_minutes ?? 0) * d.total_tickets,
+        0,
+    );
+    const avgResolutionMinutes =
+        totalTickets > 0 ? resolutionWeightedSum / totalTickets : null;
+    const topUnit = insightsUnitKerusakan[0];
+    const topCategory = insightsTopCategories[0];
+    const topTag = insightsTopTags[0];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -159,6 +200,214 @@ export default function DepartmentReport({
                         </form>
                     </CardContent>
                 </Card>
+
+                {/* Ringkasan untuk Direksi */}
+                {departments.length > 0 && (
+                    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <FileText className="h-5 w-5" />
+                                Ringkasan untuk Direksi
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                                KPI dan rekomendasi singkat untuk bahan rapat manajemen. Periode: {data.from} s/d {data.to}.
+                            </p>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                <div className="rounded-lg border bg-card p-4">
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <Target className="h-4 w-4" />
+                                        Total tiket ditangani
+                                    </div>
+                                    <p className="mt-1 text-2xl font-bold">{totalTickets}</p>
+                                </div>
+                                <div className="rounded-lg border bg-card p-4">
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <Building2 className="h-4 w-4" />
+                                        Tiket selesai (resolved)
+                                    </div>
+                                    <p className="mt-1 text-2xl font-bold">{totalResolved}</p>
+                                    {totalTickets > 0 && (
+                                        <p className="text-xs text-muted-foreground">
+                                            {Math.round((100 * totalResolved) / totalTickets)}% dari total
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="rounded-lg border bg-card p-4">
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        Rata-rata waktu selesai
+                                    </div>
+                                    <p className="mt-1 text-2xl font-bold">
+                                        {formatDuration(avgResolutionMinutes)}
+                                    </p>
+                                </div>
+                                <div className="rounded-lg border bg-card p-4">
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                        Unit dengan tiket terbanyak
+                                    </div>
+                                    <p className="mt-1 text-xl font-bold">
+                                        {topUnit ? `${topUnit.dep_id} (${topUnit.total_tickets})` : '-'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
+                                <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
+                                    <Lightbulb className="h-4 w-4 text-amber-600" />
+                                    Rekomendasi (berdasarkan data periode ini)
+                                </h4>
+                                <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                                    {topUnit && (
+                                        <li>
+                                            <strong>Unit prioritas:</strong> {topUnit.dep_id} memiliki tiket terbanyak ({topUnit.total_tickets}). Pertimbangkan pengecekan aset, pelatihan pengguna, atau penambahan dukungan IT.
+                                        </li>
+                                    )}
+                                    {topCategory && (
+                                        <li>
+                                            <strong>Kategori prioritas:</strong> &quot;{topCategory.name}&quot; paling sering ({topCategory.count} tiket). Evaluasi penyebab berulang dan tindakan preventif atau dokumentasi.
+                                        </li>
+                                    )}
+                                    {topTag && (
+                                        <li>
+                                            <strong>Tag terbanyak:</strong> &quot;{topTag.name}&quot; ({topTag.count}). Bisa dijadikan fokus perbaikan atau pengadaan.
+                                        </li>
+                                    )}
+                                    {departments.length > 0 && (
+                                        <li>
+                                            Rata-rata penyelesaian {formatDuration(avgResolutionMinutes)} — pantau SLA dan beban tim untuk periode berikutnya.
+                                        </li>
+                                    )}
+                                </ul>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Insight & Grafik */}
+                {(insightsUnitKerusakan.length > 0 ||
+                    insightsTopCategories.length > 0 ||
+                    insightsTopTags.length > 0) && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <BarChart3 className="h-5 w-5" />
+                                Insight & Grafik
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                                Unit dengan tiket terbanyak, kategori dan tag yang paling sering muncul dalam periode ini.
+                            </p>
+                        </CardHeader>
+                        <CardContent className="space-y-8">
+                            {insightsUnitKerusakan.length > 0 && (
+                                <div>
+                                    <h4 className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
+                                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                        Unit / departemen dengan tiket kerusakan terbanyak
+                                    </h4>
+                                    <div className="h-72 w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart
+                                                data={insightsUnitKerusakan.map((u) => ({
+                                                    name: u.dep_id,
+                                                    jumlah: u.total_tickets,
+                                                }))}
+                                                layout="vertical"
+                                                margin={{ left: 20, right: 20, top: 5, bottom: 5 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                                                <XAxis type="number" className="text-xs" />
+                                                <YAxis
+                                                    type="category"
+                                                    dataKey="name"
+                                                    width={100}
+                                                    tick={{ fontSize: 11 }}
+                                                />
+                                                <Tooltip
+                                                    formatter={(value: number | undefined) => [`${value ?? 0} tiket`, 'Jumlah']}
+                                                    labelFormatter={(label) => `Unit: ${label}`}
+                                                />
+                                                <Bar dataKey="jumlah" name="Tiket" radius={[0, 4, 4, 0]} fill={CHART_COLORS[0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            )}
+
+                            {insightsTopCategories.length > 0 && (
+                                <div>
+                                    <h4 className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
+                                        <FolderOpen className="h-4 w-4" />
+                                        Kategori tiket terbanyak
+                                    </h4>
+                                    <div className="h-72 w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart
+                                                data={insightsTopCategories.map((c) => ({
+                                                    name: c.name.length > 20 ? c.name.slice(0, 18) + '…' : c.name,
+                                                    fullName: c.name,
+                                                    jumlah: c.count,
+                                                }))}
+                                                margin={{ left: 10, right: 20, top: 5, bottom: 5 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                                                <XAxis dataKey="name" className="text-xs" tick={{ fontSize: 10 }} />
+                                                <YAxis className="text-xs" />
+                                                <Tooltip
+                                                    formatter={(value: number | undefined) => [`${value ?? 0} tiket`, 'Jumlah']}
+                                                    labelFormatter={(_, payload) =>
+                                                        payload?.[0]?.payload?.fullName ?? ''
+                                                    }
+                                                />
+                                                <Bar dataKey="jumlah" name="Tiket" radius={[4, 4, 0, 0]}>
+                                                    {insightsTopCategories.map((_, i) => (
+                                                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            )}
+
+                            {insightsTopTags.length > 0 && (
+                                <div>
+                                    <h4 className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
+                                        <Tag className="h-4 w-4" />
+                                        Tag terbanyak
+                                    </h4>
+                                    <div className="h-72 w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart
+                                                data={insightsTopTags.map((t) => ({
+                                                    name: t.name.length > 15 ? t.name.slice(0, 13) + '…' : t.name,
+                                                    fullName: t.name,
+                                                    jumlah: t.count,
+                                                }))}
+                                                margin={{ left: 10, right: 20, top: 5, bottom: 5 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                                                <XAxis dataKey="name" className="text-xs" tick={{ fontSize: 10 }} />
+                                                <YAxis className="text-xs" />
+                                                <Tooltip
+                                                    formatter={(value: number | undefined) => [`${value ?? 0} tiket`, 'Jumlah']}
+                                                    labelFormatter={(_, payload) =>
+                                                        payload?.[0]?.payload?.fullName ?? ''
+                                                    }
+                                                />
+                                                <Bar dataKey="jumlah" name="Tiket" radius={[4, 4, 0, 0]}>
+                                                    {insightsTopTags.map((_, i) => (
+                                                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
 
                 {departments.length === 0 ? (
                     <Card>

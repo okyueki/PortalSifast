@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { BarChart3, AlertCircle, FileText, Building2 } from 'lucide-react';
+import { BarChart3, AlertCircle, FileText, Building2, Activity, UserCog } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
@@ -22,9 +22,16 @@ type Props = {
     canAccessSlaReport: boolean;
     canAccessEmergencyReport: boolean;
     canAccessDepartmentReport: boolean;
+    canAccessDailyActivityReport: boolean;
 };
 
-export default function ReportsIndex({ canAccessSlaReport, canAccessEmergencyReport, canAccessDepartmentReport }: Props) {
+export default function ReportsIndex({
+    canAccessSlaReport,
+    canAccessEmergencyReport,
+    canAccessDepartmentReport,
+    canAccessDailyActivityReport,
+    canAccessTechnicianReport,
+}: Props) {
     const reports: ReportItem[] = [
         {
             title: 'Laporan SLA Tiket',
@@ -39,6 +46,20 @@ export default function ReportsIndex({ canAccessSlaReport, canAccessEmergencyRep
             href: '/reports/department',
             icon: Building2,
             visible: canAccessDepartmentReport,
+        },
+        {
+            title: 'Aktivitas Harian',
+            description: 'Apa yang dilakukan user per hari: komentar, ubah status, lampiran, dll. Bukan hanya tiket selesai.',
+            href: '/reports/daily-activity',
+            icon: Activity,
+            visible: canAccessDailyActivityReport,
+        },
+        {
+            title: 'Laporan per Teknisi',
+            description: 'Tiket yang ditangani satu teknisi: jumlah, selesai, rata-rata lama, kategori, dan tag.',
+            href: '/reports/technician',
+            icon: UserCog,
+            visible: canAccessTechnicianReport,
         },
         {
             title: 'Laporan Darurat',

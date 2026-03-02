@@ -160,9 +160,48 @@ class DepartmentReportController extends Controller
                 ->all()
             : (array) $user->dep_id;
 
+        // --- Insight: unit/departemen mana yang sering terjadi kerusakan (by ticket.dep_id)
+        $unitKerusakanQuery = (clone $baseQuery)
+            ->select('tickets.dep_id', DB::raw('COUNT(tickets.id) as total_tickets'))
+            ->groupBy('tickets.dep_id');
+        $unitKerusakanRows = $unitKerusakanQuery->get()->map(function ($r) {
+            return [
+                'dep_id' => $r->dep_id ?? '(Tanpa unit)',
+                'total_tickets' => (int) $r->total_tickets,
+            ];
+        })->sortByDesc('total_tickets')->values()->take(10)->all();
+
+        // --- Insight: kategori tiket terbanyak (global dalam periode)
+        $topCatQuery = (clone $baseQuery)
+            ->leftJoin('ticket_categories as cat', 'cat.id', '=', 'tickets.ticket_category_id')
+            ->select(DB::raw('COALESCE(cat.name, \'(Tanpa kategori)\') as name'), DB::raw('COUNT(tickets.id) as count'))
+            ->groupBy('cat.name')
+            ->orderByDesc('count')
+            ->limit(10);
+        $insightsTopCategories = $topCatQuery->get()->map(fn ($r) => [
+            'name' => $r->name,
+            'count' => (int) $r->count,
+        ])->all();
+
+        // --- Insight: tag terbanyak (global dalam periode)
+        $topTagQuery = (clone $baseQuery)
+            ->join('ticket_ticket_tag as tt', 'tt.ticket_id', '=', 'tickets.id')
+            ->join('ticket_tags as tag', 'tag.id', '=', 'tt.ticket_tag_id')
+            ->select('tag.name', DB::raw('COUNT(tickets.id) as count'))
+            ->groupBy('tag.id', 'tag.name')
+            ->orderByDesc('count')
+            ->limit(10);
+        $insightsTopTags = $topTagQuery->get()->map(fn ($r) => [
+            'name' => $r->name,
+            'count' => (int) $r->count,
+        ])->all();
+
         return Inertia::render('reports/department', [
             'departments' => $departments,
             'byAssignee' => $byAssignee,
+            'insightsUnitKerusakan' => $unitKerusakanRows,
+            'insightsTopCategories' => $insightsTopCategories,
+            'insightsTopTags' => $insightsTopTags,
             'filters' => [
                 'from' => $monthFrom,
                 'to' => $monthTo,

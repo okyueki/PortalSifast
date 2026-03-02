@@ -19,6 +19,8 @@ class ReportController extends Controller
             'canAccessSlaReport' => ! $user->isPemohon(),
             'canAccessEmergencyReport' => $user->isAdmin() || $user->isStaff(),
             'canAccessDepartmentReport' => ! $user->isPemohon(),
+            'canAccessDailyActivityReport' => ! $user->isPemohon(),
+            'canAccessTechnicianReport' => ! $user->isPemohon(),
         ]);
     }
 }

@@ -599,6 +599,19 @@ export default function TicketShow({
                                 )}
                             </>
                         )}
+                        {canChangeStatus && !ticket.status.is_closed && !ticket.resolved_at && !canConfirm && (
+                            <Button
+                                variant="default"
+                                onClick={() => {
+                                    if (confirm('Tandai tiket ini sebagai selesai? Status akan pindah ke Menunggu Konfirmasi.')) {
+                                        router.post(`/tickets/${ticket.id}/resolve`, {}, { preserveScroll: true });
+                                    }
+                                }}
+                            >
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                Tandai Selesai
+                            </Button>
+                        )}
                         {canChangeStatus && !ticket.status.is_closed && !canConfirm && (
                             <Button variant="outline" onClick={handleClose}>
                                 <CheckCircle className="mr-2 h-4 w-4" />
@@ -1359,6 +1372,9 @@ export default function TicketShow({
                                     <Clock className="h-4 w-4" />
                                     Waktu
                                 </CardTitle>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Menyelesaikan tiket: ubah status ke &quot;Selesai&quot; (otomatis ke Menunggu Konfirmasi, isi <strong>Diselesaikan</strong>) → pemohon konfirmasi atau admin/staff klik &quot;Tutup&quot; (isi <strong>Ditutup</strong>). Jika tiket langsung &quot;Tutup&quot; tanpa lewat Selesai, sistem tetap mengisi Diselesaikan = Ditutup untuk laporan.
+                                </p>
                             </CardHeader>
                             <CardContent className="space-y-3 text-sm">
                                 <div className="flex justify-between">

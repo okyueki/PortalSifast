@@ -96,6 +96,20 @@ class TicketController extends Controller
             $query->whereHas('tags', fn ($q) => $q->where('ticket_tags.id', $request->tag));
         }
 
+        // Filter by closed_at range (untuk link dari laporan per teknisi)
+        if ($request->filled('closed_from') && $request->filled('closed_to')) {
+            $query->whereNotNull('closed_at')
+                ->whereBetween('closed_at', [
+                    $request->date('closed_from')->startOfDay(),
+                    $request->date('closed_to')->endOfDay(),
+                ]);
+        }
+
+        // Hanya tiket yang sudah resolved (punya resolved_at)
+        if ($request->boolean('resolved_only')) {
+            $query->whereNotNull('resolved_at');
+        }
+
         $tickets = $query
             ->orderBy('created_at', 'desc')
             ->paginate(15)
@@ -106,7 +120,7 @@ class TicketController extends Controller
             'statuses' => TicketStatus::active()->ordered()->get(),
             'priorities' => TicketPriority::active()->ordered()->get(),
             'tags' => TicketTag::where('is_active', true)->orderBy('name')->get(['id', 'name', 'slug']),
-            'filters' => $request->only(['status', 'priority', 'department', 'assignee', 'search', 'tag']),
+            'filters' => $request->only(['status', 'priority', 'department', 'assignee', 'search', 'tag', 'closed_from', 'closed_to', 'resolved_only']),
             'canExport' => $user->isAdmin() || $user->isStaff(),
             'canDelete' => $user->isAdmin(),
         ]);
@@ -114,6 +128,7 @@ class TicketController extends Controller
 
     /**
      * Papan Kanban: daftar tiket per status (view saja, data dari Ticket).
+     * Tiket open (is_closed=false) + tiket Ditutup (is_closed=true) ditampilkan agar kolom Ditutup terisi.
      */
     public function board(Request $request): Response
     {
@@ -121,7 +136,7 @@ class TicketController extends Controller
 
         $query = Ticket::query()
             ->with(['type', 'category', 'priority', 'status', 'requester', 'assignee', 'tags'])
-            ->open();
+            ->whereHas('status', fn ($q) => $q->where('is_active', true));
 
         if ($user->isPemohon()) {
             $query->where('requester_id', $user->id);
@@ -633,19 +648,54 @@ class TicketController extends Controller
     }
 
     /**
+     * Tandai tiket selesai (manual): isi resolved_at dan pindah ke Menunggu Konfirmasi.
+     */
+    public function resolve(Ticket $ticket): RedirectResponse
+    {
+        $this->authorize('changeStatus', $ticket);
+
+        if ($ticket->status->is_closed) {
+            return redirect()
+                ->route('tickets.show', $ticket)
+                ->with('info', 'Tiket sudah ditutup.');
+        }
+
+        $waitingStatus = TicketStatus::where('slug', TicketStatus::SLUG_WAITING_CONFIRMATION)->first();
+        if (! $waitingStatus) {
+            return redirect()
+                ->route('tickets.show', $ticket)
+                ->with('error', 'Status Menunggu Konfirmasi tidak ditemukan.');
+        }
+
+        $oldStatus = $ticket->status->name;
+        $ticket->resolved_at = $ticket->resolved_at ?? now();
+        $ticket->ticket_status_id = $waitingStatus->id;
+        $ticket->save();
+
+        $ticket->logActivity(TicketActivity::ACTION_STATUS_CHANGED, $oldStatus, $waitingStatus->name, 'Tandai selesai (manual)');
+
+        return redirect()
+            ->route('tickets.show', $ticket)
+            ->with('success', 'Tiket ditandai selesai. Menunggu konfirmasi pemohon atau bisa ditutup oleh admin/staff.');
+    }
+
+    /**
      * Close ticket (quick action).
+     * Jika resolved_at belum terisi (tiket ditutup langsung tanpa lewat Selesai),
+     * di-set juga agar laporan/KPI konsisten: tiket ditutup = dianggap selesai.
      */
     public function close(Ticket $ticket): RedirectResponse
     {
         $this->authorize('changeStatus', $ticket);
-
-        $user = request()->user();
 
         $oldStatus = $ticket->status->name;
         $closedStatus = TicketStatus::where('slug', TicketStatus::SLUG_CLOSED)->first();
 
         $ticket->ticket_status_id = $closedStatus->id;
         $ticket->closed_at = now();
+        if ($ticket->resolved_at === null) {
+            $ticket->resolved_at = now();
+        }
         $ticket->save();
 
         $ticket->logActivity(TicketActivity::ACTION_CLOSED, $oldStatus, $closedStatus->name);

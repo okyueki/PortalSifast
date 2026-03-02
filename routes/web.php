@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\DailyActivityReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentReportController;
 use App\Http\Controllers\EmergencyReportWebController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\InventarisController;
 use App\Http\Controllers\PegawaiController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SlaReportController;
+use App\Http\Controllers\TechnicianReportController;
 use App\Http\Controllers\TicketAttachmentController;
 use App\Http\Controllers\TicketCollaboratorController;
 use App\Http\Controllers\TicketCommentController;
@@ -48,6 +50,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/sla', SlaReportController::class)->name('reports.sla');
     Route::get('reports/department', DepartmentReportController::class)->name('reports.department');
+    Route::get('reports/daily-activity', DailyActivityReportController::class)->name('reports.daily-activity');
+    Route::get('reports/technician', TechnicianReportController::class)->name('reports.technician');
 
     // Laporan Darurat (Emergency / Panic Button) — admin & staff
     Route::get('emergency-reports', [EmergencyReportWebController::class, 'index'])->name('emergency-reports.index');
@@ -72,6 +76,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('tickets', TicketController::class);
     Route::post('tickets/{ticket}/assign-self', [TicketController::class, 'assignToSelf'])->name('tickets.assign-self');
     Route::post('tickets/{ticket}/close', [TicketController::class, 'close'])->name('tickets.close');
+    Route::post('tickets/{ticket}/resolve', [TicketController::class, 'resolve'])->name('tickets.resolve');
     Route::post('tickets/{ticket}/confirm', [TicketController::class, 'confirm'])->name('tickets.confirm');
     Route::post('tickets/{ticket}/complain', [TicketController::class, 'complain'])->name('tickets.complain');
 

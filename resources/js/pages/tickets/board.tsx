@@ -174,6 +174,9 @@ export default function TicketsBoard({ tickets, statuses, canChangeStatus }: Pro
                         <p className="mt-0.5 text-sm text-muted-foreground">
                             Seret kartu ke kolom lain untuk mengubah status. Klik kartu untuk buka detail.
                         </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            Kolom &quot;Selesai&quot; kosong karena tiket yang Anda tandai selesai otomatis pindah ke &quot;Menunggu Konfirmasi&quot;. Tiket yang sudah ditutup tampil di kolom &quot;Ditutup&quot;.
+                        </p>
                     </div>
                     <div className="flex gap-2">
                         <Button variant="outline" asChild>
