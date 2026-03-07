@@ -47,11 +47,22 @@
             $reverbHost = config('broadcasting.connections.reverb.options.client_host')
                 ?? request()->getHost();
             $reverbHost = str_contains($reverbHost, ':') ? explode(':', $reverbHost)[0] : $reverbHost;
+
+            $reverbPort = config('broadcasting.connections.reverb.options.client_port')
+                ?? (int) config('broadcasting.connections.reverb.options.port', 8080);
+
+            $reverbScheme = config('broadcasting.connections.reverb.options.client_scheme')
+                ?? (config('broadcasting.connections.reverb.options.scheme') ?? 'http');
+            // Jika halaman diakses via HTTPS, browser wajib pakai wss (bukan ws)
+            if (request()->secure()) {
+                $reverbScheme = 'https';
+            }
+
             $reverbConfig = [
                 'key' => config('broadcasting.connections.reverb.key'),
                 'host' => $reverbHost,
-                'port' => (int) config('broadcasting.connections.reverb.options.port', 8080),
-                'scheme' => config('broadcasting.connections.reverb.options.scheme') ?? 'http',
+                'port' => (int) $reverbPort,
+                'scheme' => $reverbScheme,
             ];
         @endphp
         <script>

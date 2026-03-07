@@ -23,7 +23,7 @@ class TrackUserActivity
         // Only track authenticated users
         if (Auth::check() && $request->isMethod('GET')) {
             $user = Auth::user();
-            
+
             // Update last activity and set as online
             $user->update(['last_activity_at' => now()]);
             $this->userPresenceService->setUserOnline($user);

@@ -96,6 +96,19 @@ export type TicketCollaborator = {
     user: TicketUser;
 };
 
+export type TicketIssue = {
+    id: number;
+    ticket_id: number;
+    created_by: number | null;
+    title: string;
+    description: string | null;
+    status: 'open' | 'resolved';
+    resolved_at: string | null;
+    created_at: string;
+    updated_at: string;
+    creator?: TicketUser | null;
+};
+
 export type TicketVendorCost = {
     id: number;
     ticket_id: number;
@@ -177,6 +190,7 @@ export type Ticket = {
     collaborators?: TicketCollaborator[];
     vendor_costs?: TicketVendorCost[];
     sparepart_items?: TicketSparepartItem[];
+    issues?: TicketIssue[];
 };
 
 export type PaginatedTickets = {

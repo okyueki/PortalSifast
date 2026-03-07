@@ -8,6 +8,7 @@ use App\Models\Conversation;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -90,18 +91,36 @@ class ChatController extends Controller
 
     public function storeMessage(StoreMessageRequest $request, Conversation $conversation): RedirectResponse
     {
-        $this->authorize('view', $conversation);
+        try {
+            $this->authorize('view', $conversation);
 
-        $message = $conversation->messages()->create([
-            'user_id' => $request->user()->id,
-            'body' => $request->validated('body'),
-        ]);
-        $message->load('user:id,name');
-        foreach ($conversation->participants()->pluck('user_id') as $userId) {
-            $conversation->participants()->updateExistingPivot($userId, ['updated_at' => now()]);
+            $message = $conversation->messages()->create([
+                'user_id' => $request->user()->id,
+                'body' => $request->validated('body'),
+            ]);
+            $message->load('user:id,name');
+            foreach ($conversation->participants()->pluck('user_id') as $userId) {
+                $conversation->participants()->updateExistingPivot($userId, ['updated_at' => now()]);
+            }
+
+            try {
+                broadcast(new MessageSent($message))->toOthers();
+            } catch (\Throwable $e) {
+                Log::warning('Broadcast MessageSent failed', [
+                    'message_id' => $message->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            return redirect()->route('chat.show', $conversation);
+        } catch (\Throwable $e) {
+            Log::error('ChatController::storeMessage failed', [
+                'message' => $e->getMessage(),
+                'conversation_id' => $conversation->id ?? null,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw $e;
         }
-        broadcast(new MessageSent($message))->toOthers();
-
-        return redirect()->route('chat.show', $conversation);
     }
 }

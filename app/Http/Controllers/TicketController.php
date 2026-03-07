@@ -407,6 +407,7 @@ class TicketController extends Controller
             'collaborators.user',
             'comments' => fn ($q) => $q->visibleTo($user)->with('user')->orderBy('created_at', 'asc'),
             'attachments.user',
+            'issues.creator',
             'activities' => fn ($q) => $q->with('user')->orderBy('created_at', 'desc')->limit(20),
             'vendorCosts',
             'sparepartItems',
@@ -466,6 +467,7 @@ class TicketController extends Controller
             'canAttach' => $user->can('attach', $ticket),
             'canManageCollaborators' => $user->can('manageCollaborators', $ticket),
             'canManageVendorCosts' => $user->can('manageVendorCosts', $ticket),
+            'canResolveIssue' => $user->can('changeStatus', $ticket),
         ]);
     }
 

@@ -1,17 +1,22 @@
 <?php
 
-namespace App\Broadcasting;
+namespace App\Broadcasting\Channels;
 
 use App\Models\User;
-use Illuminate\Broadcasting\Channel;
 
 class UserPresenceChannel
 {
     /**
      * Authenticate the user's access to the channel.
+     *
+     * @return array<string, mixed>|false
      */
-    public function join(User $user): array
+    public function join(?User $user): array|false
     {
+        if ($user === null) {
+            return false;
+        }
+
         return [
             'id' => $user->id,
             'name' => $user->name,

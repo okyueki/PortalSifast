@@ -54,6 +54,32 @@ class TicketStatusFactory extends Factory
     }
 
     /**
+     * Pending status (e.g. blocked by issue).
+     */
+    public function pending(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'name' => 'Tertunda',
+            'slug' => TicketStatus::SLUG_PENDING,
+            'order' => 4,
+            'is_closed' => false,
+        ]);
+    }
+
+    /**
+     * In progress status.
+     */
+    public function inProgress(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'name' => 'Dikerjakan',
+            'slug' => TicketStatus::SLUG_IN_PROGRESS,
+            'order' => 3,
+            'is_closed' => false,
+        ]);
+    }
+
+    /**
      * Closed status.
      */
     public function closed(): static

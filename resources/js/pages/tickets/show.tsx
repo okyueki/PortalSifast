@@ -19,6 +19,7 @@ import {
     DollarSign,
     Package,
     Wrench,
+    AlertCircle,
 } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
@@ -46,6 +47,7 @@ import type {
     TicketStatus,
     TicketPriority,
     TicketUser,
+    TicketIssue,
 } from '@/types/ticket';
 
 type Props = {
@@ -63,6 +65,7 @@ type Props = {
     canAttach: boolean;
     canManageCollaborators?: boolean;
     canManageVendorCosts?: boolean;
+    canResolveIssue?: boolean;
 };
 
 function getPriorityColor(color: string): string {
@@ -347,6 +350,70 @@ function SparepartForm({
     );
 }
 
+function IssueForm({
+    ticketId,
+    onSuccess,
+    onCancel,
+}: {
+    ticketId: number;
+    onSuccess: () => void;
+    onCancel: () => void;
+}) {
+    const form = useForm({
+        title: '',
+        description: '',
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        form.post(`/tickets/${ticketId}/issues`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                form.reset();
+                onSuccess();
+            },
+        });
+    };
+
+    return (
+        <form
+            onSubmit={handleSubmit}
+            className="space-y-3 rounded border p-3 bg-muted/30"
+        >
+            <div>
+                <Label className="text-xs">Judul issue *</Label>
+                <Input
+                    value={form.data.title}
+                    onChange={(e) => form.setData('title', e.target.value)}
+                    placeholder="Ringkasan hambatan / masalah"
+                    className="mt-1"
+                    required
+                />
+                <InputError message={form.errors.title} />
+            </div>
+            <div>
+                <Label className="text-xs">Deskripsi (opsional)</Label>
+                <Textarea
+                    value={form.data.description}
+                    onChange={(e) => form.setData('description', e.target.value)}
+                    placeholder="Detail jika perlu"
+                    rows={2}
+                    className="mt-1"
+                />
+                <InputError message={form.errors.description} />
+            </div>
+            <div className="flex gap-2">
+                <Button type="submit" size="sm" disabled={form.processing}>
+                    {form.processing ? 'Menyimpan...' : 'Tambah Issue'}
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+                    Batal
+                </Button>
+            </div>
+        </form>
+    );
+}
+
 function formatRelativeTime(dateString: string): string {
     const date = new Date(dateString);
     const now = new Date();
@@ -377,6 +444,7 @@ export default function TicketShow({
     canAttach,
     canManageCollaborators = false,
     canManageVendorCosts = false,
+    canResolveIssue = false,
 }: Props) {
     const { flash, auth } = usePage<{
         flash: { success?: string };
@@ -393,6 +461,7 @@ export default function TicketShow({
     const [collaboratorUserId, setCollaboratorUserId] = useState('');
     const [showVendorCostForm, setShowVendorCostForm] = useState(false);
     const [showSparepartForm, setShowSparepartForm] = useState(false);
+    const [showIssueForm, setShowIssueForm] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<{
         type: 'attachment' | 'vendor_cost' | 'collaborator' | 'sparepart';
         id: number;
@@ -652,6 +721,104 @@ export default function TicketShow({
                                     <p className="text-sm text-muted-foreground italic">
                                         Tidak ada deskripsi
                                     </p>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Issues */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <AlertCircle className="h-4 w-4" />
+                                    Issues (
+                                    {ticket.issues?.filter((i) => i.status === 'open').length ?? 0} open
+                                    )
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground font-normal mt-0.5">
+                                    Hambatan atau masalah selama pengerjaan. Saat ada issue open, tiket otomatis Tertunda; saat semua selesai, tiket ke Dikerjakan.
+                                </p>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                {ticket.issues && ticket.issues.length > 0 ? (
+                                    <ul className="space-y-3">
+                                        {ticket.issues.map((issue: TicketIssue) => (
+                                            <li
+                                                key={issue.id}
+                                                className="rounded border p-3 text-sm space-y-1"
+                                            >
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="font-medium">
+                                                                {issue.title}
+                                                            </span>
+                                                            <Badge
+                                                                variant="outline"
+                                                                className={
+                                                                    issue.status === 'open'
+                                                                        ? 'border-orange-400/60 bg-orange-500/15 text-orange-700 dark:border-orange-500/50 dark:bg-orange-500/25 dark:text-orange-300'
+                                                                        : 'border-green-400/60 bg-green-500/15 text-green-700 dark:border-green-500/50 dark:bg-green-500/25 dark:text-green-300'
+                                                                }
+                                                            >
+                                                                {issue.status === 'open' ? 'Open' : 'Resolved'}
+                                                            </Badge>
+                                                        </div>
+                                                        {issue.description && (
+                                                            <p className="text-muted-foreground mt-1 whitespace-pre-wrap">
+                                                                {issue.description}
+                                                            </p>
+                                                        )}
+                                                        <p className="text-xs text-muted-foreground mt-1.5">
+                                                            {issue.creator?.name ?? 'Sistem'} ·{' '}
+                                                            {formatRelativeTime(issue.created_at)}
+                                                            {issue.resolved_at && (
+                                                                <> · Selesai {formatRelativeTime(issue.resolved_at)}</>
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                    {canResolveIssue && issue.status === 'open' && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                router.patch(
+                                                                    `/tickets/${ticket.id}/issues/${issue.id}/resolve`,
+                                                                    {},
+                                                                    { preserveScroll: true }
+                                                                )
+                                                            }
+                                                        >
+                                                            <CheckCircle className="h-3 w-3 mr-1" />
+                                                            Resolve
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground italic">
+                                        Belum ada issue
+                                    </p>
+                                )}
+                                {!ticket.status.is_closed && (
+                                    <>
+                                        {!showIssueForm ? (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setShowIssueForm(true)}
+                                            >
+                                                + Tambah Issue
+                                            </Button>
+                                        ) : (
+                                            <IssueForm
+                                                ticketId={ticket.id}
+                                                onSuccess={() => setShowIssueForm(false)}
+                                                onCancel={() => setShowIssueForm(false)}
+                                            />
+                                        )}
+                                    </>
                                 )}
                             </CardContent>
                         </Card>

@@ -43,9 +43,19 @@ export default function ChatShow({ conversation: initialConversation, messages: 
     }, [messages]);
 
     useEffect(() => {
-        const echo = (window as unknown as { Echo?: { private: (ch: string) => { listen: (e: string, c: (data: Message) => void) => void } } }).Echo;
+        const echo = (window as unknown as {
+            Echo?: {
+                connector?: { pusher?: { connect: () => void } };
+                private: (ch: string) => { listen: (e: string, c: (data: Message) => void) => void };
+            };
+        }).Echo;
         if (!echo) return;
         try {
+            // Paksa WebSocket connect agar request wss muncul di Network tab (Pusher lazy-connect)
+            const pusher = echo.connector?.pusher;
+            if (typeof pusher?.connect === 'function') {
+                pusher.connect();
+            }
             const channel = echo.private(`conversation.${initialConversation.id}`);
             const handler = (data: Message & { conversation_id?: number }) => {
                 const msg: Message = {

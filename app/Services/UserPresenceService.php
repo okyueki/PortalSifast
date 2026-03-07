@@ -2,16 +2,18 @@
 
 namespace App\Services;
 
-use App\Models\User;
-use App\Broadcasting\UserOnlineEvent;
 use App\Broadcasting\UserOfflineEvent;
+use App\Broadcasting\UserOnlineEvent;
+use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class UserPresenceService
 {
     private const CACHE_KEY = 'online_users';
+
     private const USER_CACHE_PREFIX = 'user_online_';
+
     private const CACHE_TTL = 300; // 5 minutes
 
     /**
@@ -19,18 +21,18 @@ class UserPresenceService
      */
     public function setUserOnline(User $user): void
     {
-        Cache::put(self::USER_CACHE_PREFIX . $user->id, true, self::CACHE_TTL);
-        
+        Cache::put(self::USER_CACHE_PREFIX.$user->id, true, self::CACHE_TTL);
+
         // Update online users list
         $this->updateOnlineUsersList();
-        
+
         // Broadcast user online event
         try {
             broadcast(new UserOnlineEvent($user));
         } catch (\Exception $e) {
             Log::error('Failed to broadcast user online event', [
                 'user_id' => $user->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -40,18 +42,18 @@ class UserPresenceService
      */
     public function setUserOffline(User $user): void
     {
-        Cache::forget(self::USER_CACHE_PREFIX . $user->id);
-        
+        Cache::forget(self::USER_CACHE_PREFIX.$user->id);
+
         // Update online users list
         $this->updateOnlineUsersList();
-        
+
         // Broadcast user offline event
         try {
             broadcast(new UserOfflineEvent($user));
         } catch (\Exception $e) {
             Log::error('Failed to broadcast user offline event', [
                 'user_id' => $user->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -61,7 +63,7 @@ class UserPresenceService
      */
     public function isUserOnline(User $user): bool
     {
-        return Cache::has(self::USER_CACHE_PREFIX . $user->id);
+        return Cache::has(self::USER_CACHE_PREFIX.$user->id);
     }
 
     /**
@@ -80,13 +82,14 @@ class UserPresenceService
         // Get all user IDs that are marked as online
         $onlineUserIds = [];
         for ($i = 1; $i <= 1000; $i++) { // Assuming max 1000 users
-            if (Cache::has(self::USER_CACHE_PREFIX . $i)) {
+            if (Cache::has(self::USER_CACHE_PREFIX.$i)) {
                 $onlineUserIds[] = $i;
             }
         }
 
         if (empty($onlineUserIds)) {
             Cache::put(self::CACHE_KEY, [], self::CACHE_TTL);
+
             return;
         }
 
@@ -123,10 +126,10 @@ class UserPresenceService
         // This will be handled automatically by cache expiration
         // But we can also cleanup any stale entries
         $onlineUsers = $this->getOnlineUsers();
-        
+
         foreach ($onlineUsers as $user) {
             $userId = $user['id'];
-            if (!Cache::has(self::USER_CACHE_PREFIX . $userId)) {
+            if (! Cache::has(self::USER_CACHE_PREFIX.$userId)) {
                 $this->setUserOffline(User::find($userId));
             }
         }

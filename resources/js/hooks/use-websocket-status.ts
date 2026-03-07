@@ -10,9 +10,27 @@ export interface WebSocketStatus {
     errorMessage: string | null;
 }
 
-function getPusherConnection(): { bind: (e: string, c: (s: { current?: string }) => void) => void; state: string } | null {
-    const echo = (window as unknown as { Echo?: { connector?: { pusher?: { connection?: { bind: (e: string, c: (s: { current?: string }) => void) => void; state: string } } } } }).Echo;
-    return echo?.connector?.pusher?.connection ?? null;
+type EchoLike = {
+    connectionStatus?: () => string;
+    connector?: {
+        onConnectionChange?: (cb: (s: string) => void) => () => void;
+        pusher?: {
+            connect: () => void;
+            connection?: { bind: (e: string, c: (x: { current?: string }) => void) => void };
+        };
+    };
+    channel?: (n: string) => unknown;
+    leave?: (n: string) => void;
+};
+
+function getEcho(): EchoLike | null {
+    return (window as unknown as { Echo?: EchoLike }).Echo ?? null;
+}
+
+function getEchoConnectionStatus(): string | null {
+    const echo = getEcho();
+    if (typeof echo?.connectionStatus !== 'function') return null;
+    return echo.connectionStatus();
 }
 
 function connectionStateToStatus(state: string): WebSocketState {
@@ -58,7 +76,7 @@ export function useWebSocketStatus(): WebSocketStatus {
             return;
         }
 
-        const echo = (window as unknown as { Echo?: unknown }).Echo;
+        const echo = getEcho();
         if (!echo) {
             setStatus({
                 echoLoaded: false,
@@ -66,18 +84,6 @@ export function useWebSocketStatus(): WebSocketStatus {
                 stateLabel: stateToLabel('echo_unavailable'),
                 lastUpdated: new Date(),
                 errorMessage: 'Laravel Echo tidak ter-load. Pastikan Vite/build sudah include echo.js.',
-            });
-            return;
-        }
-
-        const conn = getPusherConnection();
-        if (!conn) {
-            setStatus({
-                echoLoaded: true,
-                state: 'error',
-                stateLabel: 'Status koneksi tidak diketahui',
-                lastUpdated: new Date(),
-                errorMessage: 'Struktur connector Echo tidak dikenali (Reverb/Pusher).',
             });
             return;
         }
@@ -94,28 +100,61 @@ export function useWebSocketStatus(): WebSocketStatus {
             }));
         };
 
-        // Set initial state
-        updateFromState(conn.state ?? 'disconnected');
+        // Pakai API resmi Echo: connectionStatus() dan onConnectionChange()
+        const initialStatus = getEchoConnectionStatus();
+        updateFromState(initialStatus ?? 'disconnected');
 
-        const handleStateChange = (states: { current?: string }) => {
-            if (states?.current) {
-                updateFromState(states.current);
+        const unbind = echo.connector?.onConnectionChange?.((s: string) => updateFromState(s));
+        if (typeof unbind !== 'function') {
+            // Fallback: bind langsung ke pusher.connection
+            const conn = echo.connector?.pusher?.connection;
+            if (conn) {
+                conn.bind('state_change', (x) => x?.current && updateFromState(x.current));
+                conn.bind('connected', () => updateFromState('connected'));
+                conn.bind('disconnected', () => updateFromState('disconnected'));
+                conn.bind('unavailable', () => updateFromState('unavailable'));
+                conn.bind('error', () => updateFromState('error'));
             }
-        };
+        }
 
-        conn.bind('state_change', handleStateChange);
-        conn.bind('connected', () => updateFromState('connected'));
-        conn.bind('disconnected', () => updateFromState('disconnected'));
-        conn.bind('unavailable', () => updateFromState('unavailable'));
-        conn.bind('error', () => updateFromState('error'));
+        // Paksa koneksi
+        const pusher = echo.connector?.pusher;
+        if (typeof pusher?.connect === 'function') {
+            pusher.connect();
+        } else {
+            try {
+                echo.channel?.('websocket-connection-check');
+            } catch {
+                /* ignore */
+            }
+        }
+
+        // Re-sync pakai Echo.connectionStatus() (sumber kebenaran yang sama dengan UI Echo)
+        const t1 = window.setTimeout(() => {
+            const s = getEchoConnectionStatus();
+            if (s) updateFromState(s);
+        }, 800);
+        const t2 = window.setTimeout(() => {
+            const s = getEchoConnectionStatus();
+            if (s) updateFromState(s);
+        }, 2000);
+        const t3 = window.setTimeout(() => {
+            const s = getEchoConnectionStatus();
+            if (s) updateFromState(s);
+        }, 4000);
 
         return () => {
+            window.clearTimeout(t1);
+            window.clearTimeout(t2);
+            window.clearTimeout(t3);
+            if (typeof unbind === 'function') unbind();
             try {
-                conn.bind('state_change', () => {});
+                echo.leave?.('websocket-connection-check');
             } catch {
-                // ignore cleanup errors
+                /* ignore */
             }
         };
+
     }, []);
 
     return status;

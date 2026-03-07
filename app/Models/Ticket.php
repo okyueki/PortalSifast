@@ -183,6 +183,16 @@ class Ticket extends Model
         return $this->hasMany(TicketCollaborator::class)->with('user');
     }
 
+    public function issues(): HasMany
+    {
+        return $this->hasMany(TicketIssue::class)->orderBy('created_at', 'desc');
+    }
+
+    public function openIssues(): HasMany
+    {
+        return $this->hasMany(TicketIssue::class)->where('status', TicketIssue::STATUS_OPEN);
+    }
+
     public function group(): BelongsTo
     {
         return $this->belongsTo(TicketGroup::class, 'ticket_group_id');

@@ -50,6 +50,10 @@ class TicketActivity extends Model
 
     public const ACTION_COLLABORATOR_REMOVED = 'collaborator_removed';
 
+    public const ACTION_ISSUE_OPENED = 'issue_opened';
+
+    public const ACTION_ISSUE_RESOLVED = 'issue_resolved';
+
     // ==================== RELATIONSHIPS ====================
 
     public function ticket(): BelongsTo
@@ -81,6 +85,8 @@ class TicketActivity extends Model
             self::ACTION_AUTO_CLOSED => 'Tiket ditutup otomatis',
             self::ACTION_COLLABORATOR_ADDED => 'Rekan ditambahkan',
             self::ACTION_COLLABORATOR_REMOVED => 'Rekan dihapus',
+            self::ACTION_ISSUE_OPENED => 'Issue ditambahkan',
+            self::ACTION_ISSUE_RESOLVED => 'Issue diselesaikan',
             default => $this->action,
         };
     }

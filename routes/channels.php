@@ -13,5 +13,12 @@ Broadcast::channel('presence.users', UserPresenceChannel::class);
 
 // Private channel chat: hanya participant yang boleh listen
 Broadcast::channel('conversation.{conversationId}', function ($user, $conversationId) {
-    return Conversation::find($conversationId)?->participants()->where('user_id', $user->id)->exists() ?? false;
+    if ($user === null) {
+        return false;
+    }
+    try {
+        return Conversation::find($conversationId)?->participants()->where('user_id', $user->id)->exists() ?? false;
+    } catch (\Throwable) {
+        return false;
+    }
 });

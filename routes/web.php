@@ -15,6 +15,7 @@ use App\Http\Controllers\TicketAttachmentController;
 use App\Http\Controllers\TicketCollaboratorController;
 use App\Http\Controllers\TicketCommentController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\TicketIssueController;
 use App\Http\Controllers\TicketSparepartItemController;
 use App\Http\Controllers\TicketStatusController;
 use App\Http\Controllers\TicketVendorCostController;
@@ -79,6 +80,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('tickets/{ticket}/resolve', [TicketController::class, 'resolve'])->name('tickets.resolve');
     Route::post('tickets/{ticket}/confirm', [TicketController::class, 'confirm'])->name('tickets.confirm');
     Route::post('tickets/{ticket}/complain', [TicketController::class, 'complain'])->name('tickets.complain');
+
+    // Ticket issues
+    Route::post('tickets/{ticket}/issues', [TicketIssueController::class, 'store'])->name('tickets.issues.store');
+    Route::patch('tickets/{ticket}/issues/{issue}/resolve', [TicketIssueController::class, 'resolve'])->name('tickets.issues.resolve');
 
     // Ticket comments
     Route::post('tickets/{ticket}/comments', [TicketCommentController::class, 'store'])->name('tickets.comments.store');
