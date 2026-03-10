@@ -25,6 +25,7 @@ class TicketCommentController extends Controller
             'user_id' => $user->id,
             'body' => $validated['body'],
             'is_internal' => $validated['is_internal'] ?? false,
+            'is_resolution' => $validated['is_resolution'] ?? false,
         ]);
 
         // Log activity

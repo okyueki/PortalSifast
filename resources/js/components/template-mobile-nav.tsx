@@ -11,6 +11,7 @@ import {
     Users,
     Settings,
     FolderCog,
+    FolderKanban,
     LayoutDashboard,
     Package,
     BarChart3,
@@ -36,6 +37,7 @@ const mainNavItems = [
     { id: 'tickets-statuses', label: 'Status Tiket', href: '/tickets/statuses', icon: ListFilter },
     { id: 'tickets-create', label: 'Buat Tiket', href: '/tickets/create', icon: PlusCircle },
     { id: 'catatan', label: 'Catatan Kerja', href: '/catatan', icon: FileText },
+    { id: 'projects', label: 'Rencana', href: '/projects', icon: FolderKanban },
     { id: 'reports', label: 'Laporan', href: '/reports', icon: BarChart3 },
     { id: 'pegawai', label: 'Daftar Pegawai', href: '/pegawai', icon: UserCircle },
     { id: 'inventaris', label: 'Inventaris', href: '/inventaris', icon: Package },
@@ -107,7 +109,9 @@ export function TemplateMobileNav({ open, onOpenChange }: Props) {
                                       ? isTicketCreateActive(currentUrl)
                                       : item.href === '/catatan'
                                         ? currentUrl === '/catatan' || currentUrl.startsWith('/catatan?')
-                                        : item.href === '/inventaris'
+                                        : item.href === '/projects'
+                                          ? currentUrl === '/projects' || /^\/projects\/\d+/.test(currentUrl) || /^\/projects\/\d+\/edit/.test(currentUrl) || currentUrl === '/projects/create'
+                                          : item.href === '/inventaris'
                                         ? currentUrl === '/inventaris' || /^\/inventaris\/[^/]+/.test(currentUrl)
                                         : item.href === '/reports'
                                           ? currentUrl === '/reports' || /^\/reports\/.+/.test(currentUrl)

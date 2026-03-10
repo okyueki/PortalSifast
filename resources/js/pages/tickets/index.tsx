@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Filter, X, Download, Ticket, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Search, Plus, Filter, X, Download, Upload, Ticket, MoreHorizontal, Pencil, Trash2, FolderKanban } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import {
@@ -7,6 +7,9 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/empty-state';
 import Heading from '@/components/heading';
@@ -20,6 +23,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
@@ -29,6 +33,7 @@ import type {
     TicketPriority,
     TicketTag,
     TicketFilters,
+    TicketCategory,
 } from '@/types/ticket';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -36,12 +41,16 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Tiket', href: '/tickets' },
 ];
 
+type ProjectOption = { id: number; name: string };
+
 type Props = {
     tickets: PaginatedTickets;
     statuses: TicketStatus[];
     priorities: TicketPriority[];
     tags: TicketTag[];
+    categories: TicketCategory[];
     filters: TicketFilters;
+    projects?: ProjectOption[];
     canExport?: boolean;
     canDelete?: boolean;
 };
@@ -85,13 +94,26 @@ export default function TicketsIndex({
     statuses,
     priorities,
     tags = [],
+    categories = [],
     filters,
+    projects = [],
     canExport = false,
     canDelete = false,
 }: Props) {
     const [search, setSearch] = useState(filters.search || '');
     const [showFilters, setShowFilters] = useState(
-        !!(filters.status || filters.priority || filters.assignee || filters.tag)
+        !!(
+            filters.status ||
+            filters.priority ||
+            filters.assignee ||
+            filters.tag ||
+            filters.category ||
+            filters.subcategory ||
+            filters.project ||
+            filters.created_from ||
+            filters.created_to ||
+            filters.include_closed
+        )
     );
     const [deleteTicketId, setDeleteTicketId] = useState<number | null>(null);
     const [deleteTicketNumber, setDeleteTicketNumber] = useState<string>('');
@@ -117,7 +139,25 @@ export default function TicketsIndex({
         router.get('/tickets', {}, { preserveState: true, replace: true });
     };
 
-    const hasActiveFilters = !!(filters.status || filters.priority || filters.assignee || filters.search || filters.tag);
+    const hasActiveFilters = !!(
+        filters.status ||
+        filters.priority ||
+        filters.assignee ||
+        filters.search ||
+        filters.tag ||
+        filters.category ||
+        filters.subcategory ||
+        filters.created_from ||
+        filters.created_to ||
+        filters.include_closed
+    );
+
+    const includeClosed = filters.include_closed === '1' || filters.include_closed === 'true';
+
+    const selectedCategory = filters.category
+        ? categories.find((c) => c.id === parseInt(filters.category!, 10))
+        : null;
+    const subcategories = selectedCategory?.subcategories ?? [];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -131,20 +171,28 @@ export default function TicketsIndex({
                     />
                     <div className="flex gap-2">
                         {canExport && (
-                            <Button variant="outline" asChild>
-                                <a
-                                    href={`/tickets/export?${new URLSearchParams(
-                                        Object.fromEntries(
-                                            Object.entries(filters).filter(
-                                                ([, v]) => v !== undefined && v !== ''
-                                            )
-                                        ) as Record<string, string>
-                                    )}`}
-                                >
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Ekspor CSV
-                                </a>
-                            </Button>
+                            <>
+                                <Button variant="outline" asChild>
+                                    <a
+                                        href={`/tickets/export?${new URLSearchParams(
+                                            Object.fromEntries(
+                                                Object.entries(filters).filter(
+                                                    ([, v]) => v !== undefined && v !== ''
+                                                )
+                                            ) as Record<string, string>
+                                        )}`}
+                                    >
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Ekspor CSV
+                                    </a>
+                                </Button>
+                                <Button variant="outline" asChild>
+                                    <Link href="/tickets/import">
+                                        <Upload className="mr-2 h-4 w-4" />
+                                        Impor CSV
+                                    </Link>
+                                </Button>
+                            </>
                         )}
                         <Button asChild>
                             <Link href="/tickets/create">
@@ -191,6 +239,21 @@ export default function TicketsIndex({
                 {/* Filter Panel */}
                 {showFilters && (
                     <div className="flex flex-wrap gap-3 rounded-lg border bg-card p-4">
+                        <div className="flex w-full items-center gap-2 sm:w-auto">
+                            <Checkbox
+                                id="include_closed"
+                                checked={includeClosed}
+                                onCheckedChange={(checked) =>
+                                    applyFilters({ include_closed: checked ? '1' : undefined })
+                                }
+                            />
+                            <label
+                                htmlFor="include_closed"
+                                className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                                Tampilkan tiket ditutup
+                            </label>
+                        </div>
                         <div className="min-w-[150px]">
                             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                                 Status
@@ -275,6 +338,117 @@ export default function TicketsIndex({
                                 </Select>
                             </div>
                         )}
+                        <div className="min-w-[180px]">
+                            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                                Kategori
+                            </label>
+                            <Select
+                                value={filters.category || '__all__'}
+                                onValueChange={(v) => {
+                                    const catId = v === '__all__' ? undefined : v;
+                                    applyFilters({
+                                        category: catId,
+                                        subcategory: undefined,
+                                    });
+                                }}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Semua kategori" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="__all__">Semua kategori</SelectItem>
+                                    {categories.map((c) => (
+                                        <SelectItem key={c.id} value={String(c.id)}>
+                                            {c.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="min-w-[180px]">
+                            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                                Subkategori
+                            </label>
+                            <Select
+                                value={filters.subcategory || '__all__'}
+                                onValueChange={(v) =>
+                                    applyFilters({ subcategory: v === '__all__' ? undefined : v })
+                                }
+                                disabled={subcategories.length === 0}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder={selectedCategory ? 'Semua subkategori' : 'Pilih kategori dulu'} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="__all__">Semua subkategori</SelectItem>
+                                    {subcategories.map((s) => (
+                                        <SelectItem key={s.id} value={String(s.id)}>
+                                            {s.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {projects.length > 0 && (
+                            <div className="min-w-[180px]">
+                                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                                    Rencana / Project
+                                </label>
+                                <Select
+                                    value={filters.project ?? '__all__'}
+                                    onValueChange={(v) =>
+                                        applyFilters({ project: v === '__all__' ? undefined : v })
+                                    }
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Semua" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="__all__">Semua</SelectItem>
+                                        <SelectItem value="__none__">Tanpa project</SelectItem>
+                                        {projects.map((p) => (
+                                            <SelectItem key={p.id} value={String(p.id)}>
+                                                {p.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                        <div className="flex flex-wrap items-end gap-2">
+                            <div className="min-w-[140px]">
+                                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                                    Tanggal dibuat dari
+                                </label>
+                                <Input
+                                    type="date"
+                                    value={filters.created_from ?? ''}
+                                    onChange={(e) => {
+                                        const v = e.target.value || undefined;
+                                        applyFilters({
+                                            created_from: v,
+                                            created_to: v ? filters.created_to : undefined,
+                                        });
+                                    }}
+                                />
+                            </div>
+                            <div className="min-w-[140px]">
+                                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                                    Tanggal dibuat sampai
+                                </label>
+                                <Input
+                                    type="date"
+                                    value={filters.created_to ?? ''}
+                                    onChange={(e) => {
+                                        const v = e.target.value || undefined;
+                                        applyFilters({
+                                            created_from: v ? filters.created_from : undefined,
+                                            created_to: v,
+                                        });
+                                    }}
+                                />
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -288,16 +462,17 @@ export default function TicketsIndex({
                                     <th className="px-4 py-3 font-medium">Judul</th>
                                     <th className="px-4 py-3 font-medium">Prioritas</th>
                                     <th className="px-4 py-3 font-medium">Status</th>
+                                    <th className="px-4 py-3 font-medium">Rencana</th>
                                     <th className="px-4 py-3 font-medium">Pemohon</th>
                                     <th className="px-4 py-3 font-medium">Petugas</th>
                                     <th className="px-4 py-3 font-medium">Dibuat</th>
-                                    {canDelete && <th className="px-4 py-3 font-medium w-12"></th>}
+                                    {(canExport || canDelete) && <th className="px-4 py-3 font-medium w-12"></th>}
                                 </tr>
                             </thead>
                             <tbody>
                                 {tickets.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={canDelete ? 8 : 7} className="p-0">
+                                        <td colSpan={(canExport || canDelete) ? 9 : 8} className="p-0">
                                             <EmptyState
                                                 icon={<Ticket className="size-7" />}
                                                 title={
@@ -342,7 +517,14 @@ export default function TicketsIndex({
                                                         {ticket.title}
                                                     </p>
                                                     <p className="text-xs text-muted-foreground truncate">
-                                                        {ticket.category?.name || '-'}
+                                                        {[
+                                                            ticket.category?.name,
+                                                            ticket.subcategory?.name,
+                                                            ticket.inventaris?.barang?.nama_barang ||
+                                                                ticket.inventaris?.no_inventaris,
+                                                        ]
+                                                            .filter(Boolean)
+                                                            .join(' · ') || '-'}
                                                     </p>
                                                     {ticket.tags && ticket.tags.length > 0 && (
                                                         <div className="mt-1 flex flex-wrap gap-1">
@@ -376,6 +558,19 @@ export default function TicketsIndex({
                                                 </Badge>
                                             </td>
                                             <td className="px-4 py-3 text-muted-foreground">
+                                                {ticket.project ? (
+                                                    <Link
+                                                        href={`/projects/${ticket.project.id}`}
+                                                        className="text-primary hover:underline"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        {ticket.project.name}
+                                                    </Link>
+                                                ) : (
+                                                    '–'
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-muted-foreground">
                                                 {ticket.requester.name}
                                             </td>
                                             <td className="px-4 py-3 text-muted-foreground">
@@ -388,7 +583,7 @@ export default function TicketsIndex({
                                             <td className="px-4 py-3 text-muted-foreground text-xs">
                                                 {formatDate(ticket.created_at)}
                                             </td>
-                                            {canDelete && (
+                                            {(canExport || canDelete) && (
                                                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
@@ -403,16 +598,53 @@ export default function TicketsIndex({
                                                                     Edit
                                                                 </Link>
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem
-                                                                className="text-destructive focus:text-destructive"
-                                                                onClick={() => {
-                                                                    setDeleteTicketId(ticket.id);
-                                                                    setDeleteTicketNumber(ticket.ticket_number);
-                                                                }}
-                                                            >
-                                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                                Hapus
-                                                            </DropdownMenuItem>
+                                                            {projects.length > 0 && (
+                                                                <DropdownMenuSub>
+                                                                    <DropdownMenuSubTrigger>
+                                                                        <FolderKanban className="mr-2 h-4 w-4" />
+                                                                        Pindah ke project
+                                                                    </DropdownMenuSubTrigger>
+                                                                    <DropdownMenuSubContent>
+                                                                        <DropdownMenuItem
+                                                                            onClick={() => {
+                                                                                router.patch(
+                                                                                    `/tickets/${ticket.id}`,
+                                                                                    { project_id: null },
+                                                                                    { preserveScroll: true }
+                                                                                );
+                                                                            }}
+                                                                        >
+                                                                            Lepas dari project
+                                                                        </DropdownMenuItem>
+                                                                        {projects.map((p) => (
+                                                                            <DropdownMenuItem
+                                                                                key={p.id}
+                                                                                onClick={() => {
+                                                                                    router.patch(
+                                                                                        `/tickets/${ticket.id}`,
+                                                                                        { project_id: p.id },
+                                                                                        { preserveScroll: true }
+                                                                                    );
+                                                                                }}
+                                                                            >
+                                                                                {p.name}
+                                                                            </DropdownMenuItem>
+                                                                        ))}
+                                                                    </DropdownMenuSubContent>
+                                                                </DropdownMenuSub>
+                                                            )}
+                                                            {canDelete && (
+                                                                <DropdownMenuItem
+                                                                    className="text-destructive focus:text-destructive"
+                                                                    onClick={() => {
+                                                                        setDeleteTicketId(ticket.id);
+                                                                        setDeleteTicketNumber(ticket.ticket_number);
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                                    Hapus
+                                                                </DropdownMenuItem>
+                                                            )}
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
                                                 </td>

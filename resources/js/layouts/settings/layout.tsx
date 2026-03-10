@@ -42,6 +42,11 @@ const sidebarNavItems: NavItem[] = [
         href: '/settings/websocket-status',
         icon: null,
     },
+    {
+        title: 'Telegram',
+        href: '/settings/telegram',
+        icon: null,
+    },
 ];
 
 export default function SettingsLayout({ children }: PropsWithChildren) {

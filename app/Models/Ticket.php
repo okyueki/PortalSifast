@@ -24,6 +24,7 @@ class Ticket extends Model
         'requester_id',
         'assignee_id',
         'ticket_group_id',
+        'project_id',
         'title',
         'description',
         'due_date',
@@ -196,6 +197,11 @@ class Ticket extends Model
     public function group(): BelongsTo
     {
         return $this->belongsTo(TicketGroup::class, 'ticket_group_id');
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
     }
 
     // ==================== SCOPES ====================

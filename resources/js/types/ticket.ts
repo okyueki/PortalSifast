@@ -57,6 +57,8 @@ export type TicketComment = {
     user_id: number;
     body: string;
     is_internal: boolean;
+    /** Ditandai sebagai cara penyelesaian masalah (untuk tracking resolusi) */
+    is_resolution: boolean;
     created_at: string;
     updated_at: string;
     user: TicketUser;
@@ -155,6 +157,7 @@ export type Ticket = {
     requester_id: number;
     assignee_id: number | null;
     ticket_group_id: number | null;
+    project_id: number | null;
     related_ticket_id: number | null;
     asset_no_inventaris: string | null;
     asset_id?: number | null; // deprecated
@@ -176,6 +179,7 @@ export type Ticket = {
     requester: TicketUser;
     assignee: TicketUser | null;
     group: TicketGroup | null;
+    project?: { id: number; name: string } | null;
     related_ticket: Ticket | null;
     inventaris?: {
         no_inventaris: string;
@@ -209,4 +213,21 @@ export type TicketFilters = {
     assignee?: string;
     search?: string;
     tag?: string;
+    /** Filter by kategori (Pengembangan, Kerusakan jaringan, Perbaikan printer, dll.) */
+    category?: string;
+    /** Filter by subkategori (printer mana, jaringan mana, dll.) */
+    subcategory?: string;
+    /** Filter by tanggal dibuat (created_at): dari tanggal */
+    created_from?: string;
+    /** Filter by tanggal dibuat (created_at): sampai tanggal */
+    created_to?: string;
+    /** Filter by tanggal ditutup (closed_at): dari tanggal */
+    closed_from?: string;
+    /** Filter by tanggal ditutup (closed_at): sampai tanggal */
+    closed_to?: string;
+    resolved_only?: string;
+    /** 1 = tampilkan juga tiket yang sudah ditutup; default = sembunyikan tiket ditutup */
+    include_closed?: string;
+    /** Filter by project/rencana (project_id) */
+    project?: string;
 };

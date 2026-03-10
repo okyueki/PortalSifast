@@ -20,8 +20,14 @@ import {
     Package,
     Wrench,
     AlertCircle,
+    ChevronDown,
 } from 'lucide-react';
 import { useState } from 'react';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -454,6 +460,7 @@ export default function TicketShow({
     const isStaffOrAdmin = (user as unknown as { role?: string }).role !== 'pemohon';
 
     const [activeTab, setActiveTab] = useState<'comments' | 'activities'>('comments');
+    const [optionalSectionOpen, setOptionalSectionOpen] = useState(false);
     const [complainNote, setComplainNote] = useState('');
     const [showComplainForm, setShowComplainForm] = useState(false);
     const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
@@ -478,6 +485,7 @@ export default function TicketShow({
     const commentForm = useForm({
         body: '',
         is_internal: false,
+        is_resolution: false,
     });
 
     const handleCommentSubmit = (e: React.FormEvent) => {
@@ -617,6 +625,17 @@ export default function TicketShow({
                                 {ticket.category && ` • ${ticket.category.name}`}
                                 {ticket.subcategory && ` • ${ticket.subcategory.name}`}
                             </p>
+                            {ticket.project && (
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    Rencana:{' '}
+                                    <Link
+                                        href={`/projects/${ticket.project.id}`}
+                                        className="text-primary hover:underline"
+                                    >
+                                        {ticket.project.name}
+                                    </Link>
+                                </p>
+                            )}
                         </div>
                     </div>
 
@@ -725,6 +744,259 @@ export default function TicketShow({
                             </CardContent>
                         </Card>
 
+                        {/* Komentar & Riwayat — ditonjolkan agar mudah dilihat */}
+                        <Card className="border-primary/25 bg-primary/5 dark:bg-primary/10 shadow-sm">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <MessageSquare className="h-4 w-4 text-primary" />
+                                    Komentar
+                                    <Badge variant="secondary" className="font-normal">
+                                        {ticket.comments?.length || 0}
+                                    </Badge>
+                                </CardTitle>
+                                <div className="flex gap-2 mt-2">
+                                    <Button
+                                        variant={activeTab === 'comments' ? 'default' : 'ghost'}
+                                        size="sm"
+                                        onClick={() => setActiveTab('comments')}
+                                    >
+                                        <MessageSquare className="mr-2 h-4 w-4" />
+                                        Komentar
+                                    </Button>
+                                    <Button
+                                        variant={activeTab === 'activities' ? 'default' : 'ghost'}
+                                        size="sm"
+                                        onClick={() => setActiveTab('activities')}
+                                    >
+                                        <History className="mr-2 h-4 w-4" />
+                                        Riwayat
+                                    </Button>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                {activeTab === 'comments' ? (
+                                    <div className="space-y-4">
+                                        {/* Ringkasan cara penyelesaian (tracking resolusi) */}
+                                        {ticket.comments?.filter((c) => c.is_resolution).length ? (
+                                            <div className="rounded-lg border border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/30 p-3 space-y-2">
+                                                <p className="text-xs font-medium text-green-800 dark:text-green-200 flex items-center gap-1">
+                                                    <CheckCircle className="h-3.5 w-3.5" />
+                                                    Cara penyelesaian
+                                                </p>
+                                                <ul className="space-y-1.5">
+                                                    {ticket.comments
+                                                        .filter((c) => c.is_resolution)
+                                                        .map((c) => (
+                                                            <li
+                                                                key={c.id}
+                                                                className="text-sm text-green-900 dark:text-green-100 flex gap-2"
+                                                            >
+                                                                <span className="text-muted-foreground shrink-0">
+                                                                    {c.user.name} · {formatRelativeTime(c.created_at)}:
+                                                                </span>
+                                                                <span className="whitespace-pre-wrap">{c.body}</span>
+                                                            </li>
+                                                        ))}
+                                                </ul>
+                                            </div>
+                                        ) : null}
+
+                                        {ticket.comments && ticket.comments.length > 0 ? (
+                                            <div className="space-y-3">
+                                                {ticket.comments.map((comment) => (
+                                                    <div
+                                                        key={comment.id}
+                                                        className={`rounded-lg border p-3 ${
+                                                            comment.is_internal
+                                                                ? 'border-amber-300/50 bg-amber-50/70 dark:border-amber-600/30 dark:bg-amber-950/30'
+                                                                : 'border-border bg-card'
+                                                        } ${comment.is_resolution ? 'ring-1 ring-green-300/50 dark:ring-green-600/30' : ''}`}
+                                                    >
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="font-medium text-sm">
+                                                                    {comment.user.name}
+                                                                </span>
+                                                                {comment.is_internal && (
+                                                                    <Badge
+                                                                        variant="outline"
+                                                                        className="text-xs border-amber-400 text-amber-700 dark:text-amber-300"
+                                                                    >
+                                                                        Internal
+                                                                    </Badge>
+                                                                )}
+                                                                {comment.is_resolution && (
+                                                                    <Badge
+                                                                        variant="outline"
+                                                                        className="text-xs border-green-500/50 bg-green-500/15 text-green-700 dark:text-green-300"
+                                                                    >
+                                                                        <CheckCircle className="h-3 w-3 mr-0.5" />
+                                                                        Resolusi
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {formatRelativeTime(comment.created_at)}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-sm whitespace-pre-wrap">
+                                                            {comment.body}
+                                                        </p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground text-center py-4">
+                                                Belum ada komentar
+                                            </p>
+                                        )}
+
+                                        {!ticket.status.is_closed && (
+                                            <form
+                                                onSubmit={handleCommentSubmit}
+                                                className="space-y-3 pt-4 border-t"
+                                            >
+                                                <Textarea
+                                                    placeholder="Tulis komentar..."
+                                                    value={commentForm.data.body}
+                                                    onChange={(e) =>
+                                                        commentForm.setData('body', e.target.value)
+                                                    }
+                                                    rows={3}
+                                                    className="bg-background"
+                                                />
+                                                <InputError message={commentForm.errors.body} />
+                                                <div className="flex flex-wrap items-center gap-4 justify-between">
+                                                    <div className="flex flex-wrap items-center gap-4">
+                                                        {isStaffOrAdmin && (
+                                                            <div className="flex items-center gap-2">
+                                                                <Checkbox
+                                                                    id="is_internal"
+                                                                    checked={commentForm.data.is_internal}
+                                                                    onCheckedChange={(checked) =>
+                                                                        commentForm.setData(
+                                                                            'is_internal',
+                                                                            checked === true
+                                                                        )
+                                                                    }
+                                                                />
+                                                                <Label
+                                                                    htmlFor="is_internal"
+                                                                    className="text-sm text-muted-foreground"
+                                                                >
+                                                                    Komentar internal (tidak terlihat pemohon)
+                                                                </Label>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex items-center gap-2">
+                                                            <Checkbox
+                                                                id="is_resolution"
+                                                                checked={commentForm.data.is_resolution}
+                                                                onCheckedChange={(checked) =>
+                                                                    commentForm.setData(
+                                                                        'is_resolution',
+                                                                        checked === true
+                                                                    )
+                                                                }
+                                                            />
+                                                            <Label
+                                                                htmlFor="is_resolution"
+                                                                className="text-sm text-muted-foreground"
+                                                            >
+                                                                Tandai sebagai resolusi (cara penyelesaian)
+                                                            </Label>
+                                                        </div>
+                                                    </div>
+                                                    <Button
+                                                        type="submit"
+                                                        disabled={
+                                                            commentForm.processing ||
+                                                            !commentForm.data.body.trim()
+                                                        }
+                                                        size="sm"
+                                                    >
+                                                        <Send className="mr-2 h-4 w-4" />
+                                                        Kirim
+                                                    </Button>
+                                                </div>
+                                            </form>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {ticket.activities && ticket.activities.length > 0 ? (
+                                            ticket.activities.map((activity) => (
+                                                <div
+                                                    key={activity.id}
+                                                    className="flex gap-3 py-2 border-b last:border-0"
+                                                >
+                                                    <div className="flex-1">
+                                                        <p className="text-sm">
+                                                            <span className="font-medium">
+                                                                {activity.user.name}
+                                                            </span>{' '}
+                                                            <span className="text-muted-foreground">
+                                                                {activity.action_label}
+                                                            </span>
+                                                            {activity.old_value &&
+                                                                activity.new_value && (
+                                                                    <span className="text-muted-foreground">
+                                                                        {' '}
+                                                                        dari{' '}
+                                                                        <span className="font-medium">
+                                                                            {activity.old_value}
+                                                                        </span>{' '}
+                                                                        ke{' '}
+                                                                        <span className="font-medium">
+                                                                            {activity.new_value}
+                                                                        </span>
+                                                                    </span>
+                                                                )}
+                                                        </p>
+                                                        {activity.description && (
+                                                            <p className="text-xs text-muted-foreground mt-0.5">
+                                                                {activity.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                                        {formatRelativeTime(activity.created_at)}
+                                                    </span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground text-center py-4">
+                                                Belum ada riwayat aktivitas
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Lampiran & Biaya (opsional) — bisa dibuka/tutup */}
+                        <Card>
+                            <Collapsible open={optionalSectionOpen} onOpenChange={setOptionalSectionOpen}>
+                                <CardHeader className="py-3">
+                                    <CollapsibleTrigger asChild>
+                                        <button
+                                            type="button"
+                                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm font-medium hover:bg-muted/50 -mx-2"
+                                        >
+                                            <span className="text-muted-foreground">
+                                                Lampiran & Biaya (opsional)
+                                            </span>
+                                            <span className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
+                                                Issues {ticket.issues?.filter((i) => i.status === 'open').length ?? 0} · Lampiran {ticket.attachments?.length ?? 0} · Biaya {ticket.vendor_costs?.length ?? 0} · Sparepart {ticket.sparepart_items?.length ?? 0}
+                                                <ChevronDown
+                                                    className={`h-4 w-4 shrink-0 transition-transform ${optionalSectionOpen ? 'rotate-180' : ''}`}
+                                                />
+                                            </span>
+                                        </button>
+                                    </CollapsibleTrigger>
+                                </CardHeader>
+                                <CollapsibleContent>
+                                    <CardContent className="space-y-4 pt-0">
                         {/* Issues */}
                         <Card>
                             <CardHeader>
@@ -1114,176 +1386,9 @@ export default function TicketShow({
                                 </CardContent>
                             </Card>
                         )}
-
-                        {/* Comments & Activities Tabs */}
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant={activeTab === 'comments' ? 'default' : 'ghost'}
-                                        size="sm"
-                                        onClick={() => setActiveTab('comments')}
-                                    >
-                                        <MessageSquare className="mr-2 h-4 w-4" />
-                                        Komentar ({ticket.comments?.length || 0})
-                                    </Button>
-                                    <Button
-                                        variant={activeTab === 'activities' ? 'default' : 'ghost'}
-                                        size="sm"
-                                        onClick={() => setActiveTab('activities')}
-                                    >
-                                        <History className="mr-2 h-4 w-4" />
-                                        Riwayat ({ticket.activities?.length || 0})
-                                    </Button>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                {activeTab === 'comments' ? (
-                                    <div className="space-y-4">
-                                        {/* Comment List */}
-                                        {ticket.comments && ticket.comments.length > 0 ? (
-                                            <div className="space-y-3">
-                                                {ticket.comments.map((comment) => (
-                                                    <div
-                                                        key={comment.id}
-                                                        className={`rounded-lg border p-3 ${
-                                                            comment.is_internal
-                                                                ? 'border-yellow-300/50 bg-yellow-50/50 dark:border-yellow-600/30 dark:bg-yellow-950/20'
-                                                                : ''
-                                                        }`}
-                                                    >
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-medium text-sm">
-                                                                    {comment.user.name}
-                                                                </span>
-                                                                {comment.is_internal && (
-                                                                    <Badge
-                                                                        variant="outline"
-                                                                        className="text-xs border-yellow-400 text-yellow-700 dark:text-yellow-300"
-                                                                    >
-                                                                        Internal
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
-                                                            <span className="text-xs text-muted-foreground">
-                                                                {formatRelativeTime(comment.created_at)}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-sm whitespace-pre-wrap">
-                                                            {comment.body}
-                                                        </p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <p className="text-sm text-muted-foreground text-center py-4">
-                                                Belum ada komentar
-                                            </p>
-                                        )}
-
-                                        {/* Comment Form */}
-                                        {!ticket.status.is_closed && (
-                                            <form
-                                                onSubmit={handleCommentSubmit}
-                                                className="space-y-3 pt-4 border-t"
-                                            >
-                                                <Textarea
-                                                    placeholder="Tulis komentar..."
-                                                    value={commentForm.data.body}
-                                                    onChange={(e) =>
-                                                        commentForm.setData('body', e.target.value)
-                                                    }
-                                                    rows={3}
-                                                />
-                                                <InputError message={commentForm.errors.body} />
-
-                                                <div className="flex items-center justify-between">
-                                                    {isStaffOrAdmin && (
-                                                        <div className="flex items-center gap-2">
-                                                            <Checkbox
-                                                                id="is_internal"
-                                                                checked={commentForm.data.is_internal}
-                                                                onCheckedChange={(checked) =>
-                                                                    commentForm.setData(
-                                                                        'is_internal',
-                                                                        checked === true
-                                                                    )
-                                                                }
-                                                            />
-                                                            <Label
-                                                                htmlFor="is_internal"
-                                                                className="text-sm text-muted-foreground"
-                                                            >
-                                                                Komentar internal (tidak terlihat pemohon)
-                                                            </Label>
-                                                        </div>
-                                                    )}
-                                                    <Button
-                                                        type="submit"
-                                                        disabled={
-                                                            commentForm.processing ||
-                                                            !commentForm.data.body.trim()
-                                                        }
-                                                        size="sm"
-                                                    >
-                                                        <Send className="mr-2 h-4 w-4" />
-                                                        Kirim
-                                                    </Button>
-                                                </div>
-                                            </form>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {ticket.activities && ticket.activities.length > 0 ? (
-                                            ticket.activities.map((activity) => (
-                                                <div
-                                                    key={activity.id}
-                                                    className="flex gap-3 py-2 border-b last:border-0"
-                                                >
-                                                    <div className="flex-1">
-                                                        <p className="text-sm">
-                                                            <span className="font-medium">
-                                                                {activity.user.name}
-                                                            </span>{' '}
-                                                            <span className="text-muted-foreground">
-                                                                {activity.action_label}
-                                                            </span>
-                                                            {activity.old_value &&
-                                                                activity.new_value && (
-                                                                    <span className="text-muted-foreground">
-                                                                        {' '}
-                                                                        dari{' '}
-                                                                        <span className="font-medium">
-                                                                            {activity.old_value}
-                                                                        </span>{' '}
-                                                                        ke{' '}
-                                                                        <span className="font-medium">
-                                                                            {activity.new_value}
-                                                                        </span>
-                                                                    </span>
-                                                                )}
-                                                        </p>
-                                                        {activity.description && (
-                                                            <p className="text-xs text-muted-foreground mt-0.5">
-                                                                {activity.description}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                                        {formatRelativeTime(activity.created_at)}
-                                                    </span>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <p className="text-sm text-muted-foreground text-center py-4">
-                                                Belum ada riwayat aktivitas
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-                            </CardContent>
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Collapsible>
                         </Card>
                     </div>
 

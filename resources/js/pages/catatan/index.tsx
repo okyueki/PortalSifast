@@ -5,9 +5,21 @@ import AppLayout from '@/layouts/app-layout';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { NotesList } from '@/components/notes/NotesList';
 import { NoteEditor } from '@/components/notes/NoteEditor';
+import { getCsrfToken } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
 import type { Note } from '@/types/note';
+
+function apiHeaders(extra: Record<string, string> = {}): Record<string, string> {
+    const h: Record<string, string> = {
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        ...extra,
+    };
+    const csrf = getCsrfToken();
+    if (csrf) h['X-XSRF-TOKEN'] = csrf;
+    return h;
+}
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard().url },
@@ -69,11 +81,7 @@ export default function CatatanIndex({ notes, selectedNote }: Props) {
                 const res = await fetch(`/api/work-notes/${note.id}`, {
                     method: 'PATCH',
                     credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Accept: 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
+                    headers: apiHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({
                         title: note.title,
                         icon: note.icon,
@@ -126,7 +134,7 @@ export default function CatatanIndex({ notes, selectedNote }: Props) {
             const res = await fetch(`/api/work-notes/${deleteTarget.id}`, {
                 method: 'DELETE',
                 credentials: 'include',
-                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                headers: apiHeaders(),
             });
             if (!res.ok) {
                 setDeleteLoading(false);
@@ -154,11 +162,7 @@ export default function CatatanIndex({ notes, selectedNote }: Props) {
             const res = await fetch('/api/work-notes', {
                 method: 'POST',
                 credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
+                headers: apiHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
                     title: 'Catatan Baru',
                     icon: '📄',

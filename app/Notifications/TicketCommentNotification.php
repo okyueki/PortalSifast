@@ -4,10 +4,13 @@ namespace App\Notifications;
 
 use App\Models\Ticket;
 use App\Models\TicketComment;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Str;
+use NotificationChannels\Telegram\TelegramMessage;
 
 class TicketCommentNotification extends Notification implements ShouldQueue
 {
@@ -23,7 +26,26 @@ class TicketCommentNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        $channels = ['mail', 'database'];
+        if ($notifiable instanceof User && $notifiable->hasTelegramConnected()) {
+            $channels[] = 'telegram';
+        }
+
+        return $channels;
+    }
+
+    public function toTelegram(object $notifiable): TelegramMessage
+    {
+        $url = route('tickets.show', $this->ticket);
+        $body = Str::limit($this->comment->body, 150);
+
+        return TelegramMessage::create()
+            ->content("*Komentar Baru pada Tiket*\n\n")
+            ->line("Tiket: *{$this->ticket->ticket_number}*")
+            ->line("Komentar: \"{$body}\"")
+            ->line("Oleh: {$this->comment->user->name}")
+            ->line('')
+            ->line("[Buka di Portal]({$url})");
     }
 
     public function toMail(object $notifiable): MailMessage

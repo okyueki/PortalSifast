@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ImportTicketsRequest;
 use App\Http\Requests\StoreTicketRequest;
 use App\Http\Requests\UpdateTicketRequest;
 use App\Models\Inventaris;
+use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\TicketActivity;
 use App\Models\TicketCategory;
@@ -34,7 +36,7 @@ class TicketController extends Controller
         $user = $request->user();
 
         $query = Ticket::query()
-            ->with(['type', 'category', 'priority', 'status', 'requester', 'assignee', 'group', 'tags']);
+            ->with(['type', 'category', 'subcategory', 'priority', 'status', 'requester', 'assignee', 'group', 'project', 'tags', 'inventaris.barang', 'inventaris.ruang']);
 
         // Filter berdasarkan role
         if ($user->isPemohon()) {
@@ -52,6 +54,11 @@ class TicketController extends Controller
             });
         }
         // Admin bisa lihat semua
+
+        // Secara default sembunyikan tiket yang sudah ditutup; bisa ditampilkan via filter "Tampilkan tiket ditutup"
+        if (! $request->boolean('include_closed')) {
+            $query->whereHas('status', fn ($q) => $q->where('is_closed', false));
+        }
 
         // Filter by status
         if ($request->filled('status')) {
@@ -96,6 +103,34 @@ class TicketController extends Controller
             $query->whereHas('tags', fn ($q) => $q->where('ticket_tags.id', $request->tag));
         }
 
+        // Filter by category (kategori: Pengembangan, Kerusakan jaringan, Perbaikan printer, dll.)
+        if ($request->filled('category')) {
+            $query->where('ticket_category_id', $request->category);
+        }
+
+        // Filter by subcategory (subkategori: printer mana, jaringan mana, dll.)
+        if ($request->filled('subcategory')) {
+            $query->where('ticket_subcategory_id', $request->subcategory);
+        }
+
+        // Filter by project (rencana)
+        if ($request->filled('project')) {
+            $projectVal = $request->project;
+            if ($projectVal === '0' || $projectVal === '__none__') {
+                $query->whereNull('project_id');
+            } else {
+                $query->where('project_id', (int) $projectVal);
+            }
+        }
+
+        // Filter by created_at range (tanggal dibuat)
+        if ($request->filled('created_from') && $request->filled('created_to')) {
+            $query->whereBetween('created_at', [
+                $request->date('created_from')->startOfDay(),
+                $request->date('created_to')->endOfDay(),
+            ]);
+        }
+
         // Filter by closed_at range (untuk link dari laporan per teknisi)
         if ($request->filled('closed_from') && $request->filled('closed_to')) {
             $query->whereNotNull('closed_at')
@@ -120,10 +155,25 @@ class TicketController extends Controller
             'statuses' => TicketStatus::active()->ordered()->get(),
             'priorities' => TicketPriority::active()->ordered()->get(),
             'tags' => TicketTag::where('is_active', true)->orderBy('name')->get(['id', 'name', 'slug']),
-            'filters' => $request->only(['status', 'priority', 'department', 'assignee', 'search', 'tag', 'closed_from', 'closed_to', 'resolved_only']),
+            'filters' => $request->only(['status', 'priority', 'department', 'assignee', 'search', 'tag', 'category', 'subcategory', 'project', 'created_from', 'created_to', 'closed_from', 'closed_to', 'resolved_only', 'include_closed']),
+            'categories' => $this->getCategoriesForTicketList($user),
+            'projects' => Project::query()->orderBy('name')->get(['id', 'name']),
             'canExport' => $user->isAdmin() || $user->isStaff(),
             'canDelete' => $user->isAdmin(),
         ]);
+    }
+
+    /**
+     * Kategori (dengan subkategori) untuk filter daftar tiket. Staff hanya lihat kategori departemennya.
+     */
+    private function getCategoriesForTicketList(\App\Models\User $user): \Illuminate\Support\Collection
+    {
+        $query = TicketCategory::active()->with('subcategories')->orderBy('name');
+        if ($user->isStaff() && $user->dep_id) {
+            $query->where('dep_id', $user->dep_id);
+        }
+
+        return $query->get(['id', 'name', 'dep_id', 'ticket_type_id', 'is_development']);
     }
 
     /**
@@ -164,9 +214,9 @@ class TicketController extends Controller
     /**
      * Show the form for creating a new ticket.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
-        $user = request()->user();
+        $user = $request->user();
 
         // Get categories berdasarkan role
         $categoriesQuery = TicketCategory::active()->with('subcategories');
@@ -181,13 +231,18 @@ class TicketController extends Controller
             ->limit(50)
             ->get(['id', 'ticket_number', 'title', 'created_at']);
 
+        $projects = Project::query()->orderBy('name')->get(['id', 'name']);
+        $initialProjectId = $request->integer('project_id', 0) ?: null;
+
         return Inertia::render('tickets/create', [
             'types' => TicketType::active()->get(),
             'categories' => $categoriesQuery->get(),
             'priorities' => TicketPriority::active()->ordered()->get(),
             'tags' => TicketTag::where('is_active', true)->orderBy('name')->get(['id', 'name', 'slug']),
             'recentTicketsForLink' => $recentTicketsForLink,
-            'canSelectRequester' => $user->isAdmin(),
+            'canSelectRequester' => $user->isAdmin() || $user->isStaff(),
+            'projects' => $projects,
+            'initialProjectId' => $initialProjectId,
         ]);
     }
 
@@ -249,12 +304,12 @@ class TicketController extends Controller
     }
 
     /**
-     * Search users for requester selector (admin only).
+     * Search users for requester selector (admin dan staff/teknisi).
      */
     public function searchForUser(Request $request): \Illuminate\Http\JsonResponse
     {
-        // Hanya admin yang bisa memilih pemohon
-        if (! $request->user()?->isAdmin()) {
+        $user = $request->user();
+        if (! $user?->isAdmin() && ! $user?->isStaff()) {
             return response()->json([], 403);
         }
 
@@ -334,9 +389,9 @@ class TicketController extends Controller
         // Determine department: from category if set, otherwise default to IT
         $depId = $category?->dep_id ?? 'IT';
 
-        // Tentukan requester: admin bisa pilih manual, user biasa = diri sendiri
+        // Tentukan requester: admin dan staff bisa pilih manual, pemohon = diri sendiri
         $requesterId = $user->id;
-        if ($user->isAdmin() && ! empty($validated['requester_id'])) {
+        if (($user->isAdmin() || $user->isStaff()) && ! empty($validated['requester_id'])) {
             $requesterId = $validated['requester_id'];
         }
 
@@ -352,6 +407,7 @@ class TicketController extends Controller
             'description' => $validated['description'] ?? null,
             'related_ticket_id' => $validated['related_ticket_id'] ?? null,
             'asset_no_inventaris' => $validated['asset_no_inventaris'] ?? null,
+            'project_id' => $validated['project_id'] ?? null,
             'response_due_at' => $slaDates['response_due_at'],
             'resolution_due_at' => $slaDates['resolution_due_at'],
         ]);
@@ -400,6 +456,7 @@ class TicketController extends Controller
             'requester',
             'assignee',
             'group',
+            'project',
             'relatedTicket',
             'tags',
             'inventaris.barang',
@@ -480,7 +537,7 @@ class TicketController extends Controller
 
         $user = request()->user();
 
-        $ticket->load(['type', 'category', 'subcategory', 'priority', 'status', 'requester', 'tags', 'inventaris.barang', 'inventaris.ruang']);
+        $ticket->load(['type', 'category', 'subcategory', 'priority', 'status', 'requester', 'tags', 'inventaris.barang', 'inventaris.ruang', 'project:id,name']);
 
         return Inertia::render('tickets/edit', [
             'ticket' => $ticket,
@@ -490,6 +547,7 @@ class TicketController extends Controller
             'statuses' => TicketStatus::active()->ordered()->get(),
             'tags' => TicketTag::where('is_active', true)->orderBy('name')->get(['id', 'name', 'slug']),
             'canDelete' => $user->can('delete', $ticket),
+            'projects' => Project::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -599,6 +657,9 @@ class TicketController extends Controller
         }
         if (isset($validated['description'])) {
             $ticket->description = $validated['description'];
+        }
+        if (array_key_exists('project_id', $validated)) {
+            $ticket->project_id = $validated['project_id'] ?: null;
         }
 
         $ticket->save();
@@ -791,16 +852,30 @@ class TicketController extends Controller
             });
         }
 
+        if (! $request->boolean('include_closed')) {
+            $query->whereHas('status', fn ($q) => $q->where('is_closed', false));
+        }
+
         if ($request->filled('status')) {
             $query->where('ticket_status_id', $request->status);
         }
         if ($request->filled('department')) {
             $query->where('dep_id', $request->department);
         }
-        if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', $request->from);
+        if ($request->filled('category')) {
+            $query->where('ticket_category_id', $request->category);
         }
-        if ($request->filled('to')) {
+        if ($request->filled('subcategory')) {
+            $query->where('ticket_subcategory_id', $request->subcategory);
+        }
+        if ($request->filled('created_from') && $request->filled('created_to')) {
+            $query->whereBetween('created_at', [
+                $request->date('created_from')->startOfDay(),
+                $request->date('created_to')->endOfDay(),
+            ]);
+        } elseif ($request->filled('from')) {
+            $query->whereDate('created_at', '>=', $request->from);
+        } elseif ($request->filled('to')) {
             $query->whereDate('created_at', '<=', $request->to);
         }
 
@@ -859,6 +934,223 @@ class TicketController extends Controller
         return redirect()
             ->route('tickets.index')
             ->with('success', "Tiket #{$ticketNumber} berhasil dihapus.");
+    }
+
+    /**
+     * Halaman impor tiket dari CSV.
+     */
+    public function importForm(): Response
+    {
+        $this->authorize('create', Ticket::class);
+
+        $user = request()->user();
+        if (! $user->isAdmin() && ! $user->isStaff()) {
+            abort(403, 'Hanya admin dan staff yang dapat mengimpor tiket.');
+        }
+
+        return Inertia::render('tickets/import', [
+            'templateUrl' => route('tickets.import.template'),
+        ]);
+    }
+
+    /**
+     * Unduh template CSV untuk impor tiket.
+     */
+    public function importTemplate(): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $this->authorize('create', Ticket::class);
+
+        $headers = [
+            'Judul',
+            'Tipe',
+            'Kategori',
+            'Prioritas',
+            'Pemohon (email)',
+            'Departemen',
+            'Deskripsi',
+        ];
+        $example = [
+            'Contoh: Monitor tidak menyala',
+            'Permintaan',
+            'Kerusakan perangkat',
+            'Normal',
+            'user@example.com',
+            'IT',
+            'Opsional',
+        ];
+
+        return ResponseFacade::streamDownload(function () use ($headers, $example) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, $headers);
+            fputcsv($handle, $example);
+            fclose($handle);
+        }, 'template-import-tiket.csv', [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    /**
+     * Proses impor tiket dari file CSV.
+     */
+    public function import(ImportTicketsRequest $request): RedirectResponse
+    {
+        $this->authorize('create', Ticket::class);
+
+        $user = $request->user();
+        $file = $request->file('file');
+
+        $content = file_get_contents($file->getRealPath());
+        if (str_starts_with($content, "\xEF\xBB\xBF")) {
+            $content = substr($content, 3);
+        }
+        $lines = array_filter(explode("\n", $content), fn ($l) => trim($l) !== '');
+
+        if (count($lines) < 2) {
+            return redirect()
+                ->route('tickets.import')
+                ->with('error', 'File CSV harus memiliki baris header dan minimal satu baris data.');
+        }
+
+        $headerRow = str_getcsv(array_shift($lines));
+        $headers = array_map(fn ($h) => trim(mb_strtolower((string) $h)), $headerRow);
+
+        $newStatus = TicketStatus::where('slug', TicketStatus::SLUG_NEW)->first();
+        if (! $newStatus) {
+            return redirect()->route('tickets.import')->with('error', 'Status "Baru" tidak ditemukan.');
+        }
+
+        $created = 0;
+        $errors = [];
+
+        foreach ($lines as $index => $line) {
+            $rowNum = $index + 2;
+            $cells = str_getcsv($line);
+            $row = [];
+            foreach ($headers as $i => $key) {
+                $row[$key] = isset($cells[$i]) ? trim((string) $cells[$i]) : '';
+            }
+
+            $title = $this->csvCell($row, 'judul', 'title');
+            if ($title === '') {
+                $errors[] = "Baris {$rowNum}: Judul wajib diisi.";
+
+                continue;
+            }
+
+            $typeName = $this->csvCell($row, 'tipe', 'type');
+            $type = $typeName !== ''
+                ? TicketType::active()->where('name', $typeName)->first()
+                : TicketType::active()->first();
+            if (! $type) {
+                $errors[] = "Baris {$rowNum}: Tipe \"{$typeName}\" tidak ditemukan.";
+
+                continue;
+            }
+
+            $categoryName = $this->csvCell($row, 'kategori', 'category');
+            $category = null;
+            if ($categoryName !== '') {
+                $category = TicketCategory::active()->where('name', $categoryName)->first();
+                if (! $category) {
+                    $errors[] = "Baris {$rowNum}: Kategori \"{$categoryName}\" tidak ditemukan.";
+
+                    continue;
+                }
+            }
+
+            $priorityName = $this->csvCell($row, 'prioritas', 'priority');
+            $priority = $priorityName !== ''
+                ? TicketPriority::active()->where('name', $priorityName)->first()
+                : TicketPriority::active()->ordered()->first();
+            if (! $priority) {
+                $errors[] = "Baris {$rowNum}: Prioritas \"{$priorityName}\" tidak ditemukan.";
+
+                continue;
+            }
+
+            $requesterEmail = $this->csvCell($row, 'pemohon (email)', 'pemohon', 'requester');
+            $requester = $requesterEmail !== ''
+                ? User::where('email', $requesterEmail)->first()
+                : null;
+            $requesterId = $requester?->id ?? $user->id;
+
+            $depId = $this->csvCell($row, 'departemen', 'department');
+            if ($depId === '' && $category) {
+                $depId = $category->dep_id;
+            }
+            if ($depId === '') {
+                $depId = 'IT';
+            }
+
+            $description = $this->csvCell($row, 'deskripsi', 'description');
+            if (mb_strlen($description) > 10000) {
+                $description = mb_substr($description, 0, 10000);
+            }
+
+            try {
+                $slaDates = $this->calculateSlaDates($type->id, $priority->id, $category?->id);
+
+                $ticket = Ticket::create([
+                    'ticket_type_id' => $type->id,
+                    'ticket_category_id' => $category?->id,
+                    'ticket_subcategory_id' => null,
+                    'ticket_priority_id' => $priority->id,
+                    'ticket_status_id' => $newStatus->id,
+                    'dep_id' => $depId,
+                    'requester_id' => $requesterId,
+                    'assignee_id' => null,
+                    'title' => mb_substr($title, 0, 255),
+                    'description' => $description !== '' ? $description : null,
+                    'response_due_at' => $slaDates['response_due_at'],
+                    'resolution_due_at' => $slaDates['resolution_due_at'],
+                ]);
+                $ticket->logActivity(TicketActivity::ACTION_CREATED, null, null, 'Tiket dibuat (impor CSV)', $user->id);
+                $created++;
+            } catch (\Throwable $e) {
+                $errors[] = "Baris {$rowNum}: {$e->getMessage()}";
+            }
+        }
+
+        if ($created > 0) {
+            $msg = "{$created} tiket berhasil diimpor.";
+            if (count($errors) > 0) {
+                $msg .= ' Beberapa baris gagal: '.implode(' ', array_slice($errors, 0, 5));
+                if (count($errors) > 5) {
+                    $msg .= ' ... ('.count($errors).' error)';
+                }
+            }
+
+            return redirect()->route('tickets.index')->with('success', $msg);
+        }
+
+        $errorMsg = count($errors) > 0
+            ? implode("\n", array_slice($errors, 0, 20))
+            : 'Tidak ada data yang valid untuk diimpor.';
+        if (count($errors) > 20) {
+            $errorMsg .= "\n... dan ".(count($errors) - 20).' error lainnya.';
+        }
+
+        return redirect()->route('tickets.import')->with('error', $errorMsg);
+    }
+
+    /**
+     * Ambil nilai sel dari baris CSV (header dinormalisasi ke lowercase).
+     *
+     * @param  array<string, string>  $row
+     * @param  string  ...$keys  Nama kolom yang dicoba (judul, title, dll.)
+     */
+    private function csvCell(array $row, string ...$keys): string
+    {
+        foreach ($keys as $key) {
+            $k = mb_strtolower(trim($key));
+            if (isset($row[$k])) {
+                $v = $row[$k];
+
+                return is_string($v) ? trim($v) : (string) $v;
+            }
+        }
+
+        return '';
     }
 
     // ==================== HELPER METHODS ====================

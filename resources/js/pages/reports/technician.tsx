@@ -33,8 +33,20 @@ type Kpi = {
     resolved_count: number;
 };
 
+type TechnicianRow = {
+    id: number;
+    name: string;
+    dep_id: string | null;
+    total_tickets: number;
+    resolved_count: number;
+    avg_resolution_minutes: number | null;
+    categories: CategoryItem[];
+    tags: TagItem[];
+};
+
 type Props = {
     technician: { id: number; name: string; dep_id: string | null } | null;
+    technicians: TechnicianRow[];
     totalTickets: number;
     resolvedCount: number;
     avgResolutionMinutes: number | null;
@@ -45,7 +57,7 @@ type Props = {
     recommendations: string[];
     techniciansForFilter: TechnicianOption[];
     canSelectTechnician: boolean;
-    filters: { from: string; to: string; assignee_id: number | null };
+    filters: { from: string; to: string; assignee_id: number | string | null };
 };
 
 function formatDuration(minutes: number | null): string {
@@ -79,6 +91,7 @@ function ticketsUrl(assigneeId: number, fromMonth: string, toMonth: string, reso
 
 export default function TechnicianReport({
     technician,
+    technicians,
     totalTickets,
     resolvedCount,
     avgResolutionMinutes,
@@ -94,18 +107,32 @@ export default function TechnicianReport({
     const { data, setData } = useForm({
         from: filters.from,
         to: filters.to,
-        assignee_id: filters.assignee_id ? String(filters.assignee_id) : '__none__',
+        assignee_id: filters.assignee_id != null ? String(filters.assignee_id) : '__none__',
     });
 
-    const handleFilter = (e: React.FormEvent) => {
-        e.preventDefault();
+    const buildParams = () => {
         const params = new URLSearchParams();
         params.set('from', data.from);
         params.set('to', data.to);
         if (data.assignee_id && data.assignee_id !== '__none__') {
             params.set('assignee_id', data.assignee_id);
         }
-        router.get(`/reports/technician?${params.toString()}`);
+        return params;
+    };
+
+    const handleFilter = (e: React.FormEvent) => {
+        e.preventDefault();
+        router.get(`/reports/technician?${buildParams().toString()}`);
+    };
+
+    const handleExportPdf = () => {
+        const params = buildParams();
+        params.set('autoprint', '1');
+        window.open(
+            `/reports/technician/print?${params.toString()}`,
+            '_blank',
+            'noopener,noreferrer',
+        );
     };
 
     return (
@@ -121,9 +148,18 @@ export default function TechnicianReport({
                             Tiket yang ditangani oleh satu teknisi dalam periode: jumlah, selesai, rata-rata lama, kategori, dan tag.
                         </p>
                     </div>
-                    <Button variant="outline" asChild>
-                        <Link href="/reports">Daftar Laporan</Link>
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={handleExportPdf}
+                            disabled={!technician && technicians.length === 0}
+                        >
+                            Export PDF
+                        </Button>
+                        <Button variant="outline" asChild>
+                            <Link href="/reports">Daftar Laporan</Link>
+                        </Button>
+                    </div>
                 </div>
 
                 <Card>
@@ -165,6 +201,7 @@ export default function TechnicianReport({
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="__none__">-- Pilih teknisi --</SelectItem>
+                                            <SelectItem value="__all__">Semua teknisi</SelectItem>
                                             {techniciansForFilter.map((t) => (
                                                 <SelectItem key={t.id} value={String(t.id)}>
                                                     {t.name}
@@ -180,7 +217,98 @@ export default function TechnicianReport({
                     </CardContent>
                 </Card>
 
-                {technician ? (
+                {technicians.length > 0 && !technician ? (
+                    <>
+                        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                            <CardHeader>
+                                <CardTitle className="text-lg">Semua Teknisi</CardTitle>
+                                <p className="text-sm text-muted-foreground">
+                                    Periode {data.from} s/d {data.to}. Tiket yang ditutup per assignee.
+                                </p>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[600px] border-collapse text-sm">
+                                        <thead>
+                                            <tr className="border-b bg-muted/50">
+                                                <th className="px-3 py-2 text-left font-medium">Teknisi</th>
+                                                <th className="px-3 py-2 text-left font-medium">Dep</th>
+                                                <th className="px-3 py-2 text-right font-medium">Tiket</th>
+                                                <th className="px-3 py-2 text-right font-medium">Resolved</th>
+                                                <th className="px-3 py-2 text-right font-medium">Rata-rata</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {technicians.map((t) => (
+                                                <tr key={t.id} className="border-b border-border/50">
+                                                    <td className="px-3 py-2 font-medium">{t.name}</td>
+                                                    <td className="px-3 py-2 text-muted-foreground">{t.dep_id ?? '-'}</td>
+                                                    <td className="px-3 py-2 text-right tabular-nums">{t.total_tickets}</td>
+                                                    <td className="px-3 py-2 text-right tabular-nums">{t.resolved_count}</td>
+                                                    <td className="px-3 py-2 text-right tabular-nums">
+                                                        {formatDuration(t.avg_resolution_minutes)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
+                                    <span>Total: {technicians.reduce((s, t) => s + t.total_tickets, 0)} tiket</span>
+                                    <span>
+                                        Resolved: {technicians.reduce((s, t) => s + t.resolved_count, 0)}
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            {technicians.map((tech) => (
+                                <Card key={tech.id}>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="flex items-center gap-2 text-base">
+                                            <User className="h-4 w-4" />
+                                            {tech.name}
+                                            {tech.dep_id && (
+                                                <span className="text-xs font-normal text-muted-foreground">
+                                                    ({tech.dep_id})
+                                                </span>
+                                            )}
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
+                                        <div className="flex flex-wrap gap-4 text-sm">
+                                            <span>{tech.total_tickets} tiket</span>
+                                            <span>{tech.resolved_count} resolved</span>
+                                            <span>{formatDuration(tech.avg_resolution_minutes)}</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {tech.categories.slice(0, 5).map((c) => (
+                                                <Badge key={c.name} variant="secondary" className="text-xs">
+                                                    {c.name} ({c.count})
+                                                </Badge>
+                                            ))}
+                                            {tech.categories.length > 5 && (
+                                                <Badge variant="outline" className="text-xs">
+                                                    +{tech.categories.length - 5}
+                                                </Badge>
+                                            )}
+                                            {tech.tags.slice(0, 3).map((tag) => (
+                                                <Badge key={tag.id} variant="outline" className="text-xs">
+                                                    {tag.name} ({tag.count})
+                                                </Badge>
+                                            ))}
+                                            {tech.tags.length > 3 && (
+                                                <Badge variant="outline" className="text-xs">
+                                                    +{tech.tags.length - 3}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    </>
+                ) : technician ? (
                     <>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                             <Card>

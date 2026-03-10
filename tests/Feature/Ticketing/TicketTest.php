@@ -203,6 +203,18 @@ it('returns canSelectRequester flag for admin', function () {
     );
 });
 
+it('returns canSelectRequester flag for staff', function () {
+    $staff = User::factory()->staff()->create();
+
+    $response = $this->actingAs($staff)->get('/tickets/create');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('tickets/create')
+        ->where('canSelectRequester', true)
+    );
+});
+
 it('returns canSelectRequester false for non-admin', function () {
     $pemohon = User::factory()->pemohon()->create();
 
@@ -552,4 +564,47 @@ it('denies staff from deleting ticket', function () {
 
     $response->assertForbidden();
     $this->assertDatabaseHas('tickets', ['id' => $ticket->id]);
+});
+
+// ==================== IMPORT CSV ====================
+
+it('shows import form for admin', function () {
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->get('/tickets/import');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('tickets/import')
+        ->has('templateUrl')
+    );
+});
+
+it('allows admin to import tickets from CSV', function () {
+    $admin = User::factory()->admin()->create();
+    $type = $this->type;
+    $category = $this->category;
+    $priority = $this->priority;
+
+    $csv = "Judul,Tipe,Kategori,Prioritas,Pemohon (email),Departemen,Deskripsi\n";
+    $csv .= "\"Tiket dari CSV\",\"{$type->name}\",\"{$category->name}\",\"{$priority->name}\",\"{$admin->email}\",IT,\"Deskripsi impor\"";
+
+    $response = $this->actingAs($admin)->post('/tickets/import', [
+        'file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('tickets.csv', $csv),
+    ]);
+
+    $response->assertRedirect('/tickets');
+    $response->assertSessionHas('success');
+    $this->assertDatabaseHas('tickets', [
+        'title' => 'Tiket dari CSV',
+        'requester_id' => $admin->id,
+    ]);
+});
+
+it('denies pemohon access to import page', function () {
+    $pemohon = User::factory()->pemohon()->create();
+
+    $response = $this->actingAs($pemohon)->get('/tickets/import');
+
+    $response->assertForbidden();
 });

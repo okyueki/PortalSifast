@@ -17,6 +17,22 @@ class DepartmentReportController extends Controller
      */
     public function __invoke(Request $request): Response
     {
+        return Inertia::render('reports/department', $this->reportProps($request));
+    }
+
+    /**
+     * @return array{
+     *   departments: array<int, array<string, mixed>>,
+     *   byAssignee: array<int, array<string, mixed>>,
+     *   insightsUnitKerusakan: array<int, array{dep_id: string, total_tickets: int}>,
+     *   insightsTopCategories: array<int, array{name: string, count: int}>,
+     *   insightsTopTags: array<int, array{name: string, count: int}>,
+     *   filters: array{from: string, to: string, dep_id: string|null, per_petugas: bool},
+     *   departmentsForFilter: array<int, string>
+     * }
+     */
+    protected function reportProps(Request $request): array
+    {
         $user = $request->user();
 
         if ($user->isPemohon()) {
@@ -196,7 +212,7 @@ class DepartmentReportController extends Controller
             'count' => (int) $r->count,
         ])->all();
 
-        return Inertia::render('reports/department', [
+        return [
             'departments' => $departments,
             'byAssignee' => $byAssignee,
             'insightsUnitKerusakan' => $unitKerusakanRows,
@@ -209,6 +225,6 @@ class DepartmentReportController extends Controller
                 'per_petugas' => $breakdownPerPetugas,
             ],
             'departmentsForFilter' => $departmentsForFilter,
-        ]);
+        ];
     }
 }

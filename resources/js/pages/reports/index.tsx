@@ -23,6 +23,7 @@ type Props = {
     canAccessEmergencyReport: boolean;
     canAccessDepartmentReport: boolean;
     canAccessDailyActivityReport: boolean;
+    canAccessRequesterReport: boolean;
 };
 
 export default function ReportsIndex({
@@ -30,6 +31,7 @@ export default function ReportsIndex({
     canAccessEmergencyReport,
     canAccessDepartmentReport,
     canAccessDailyActivityReport,
+    canAccessRequesterReport,
     canAccessTechnicianReport,
 }: Props) {
     const reports: ReportItem[] = [
@@ -46,6 +48,13 @@ export default function ReportsIndex({
             href: '/reports/department',
             icon: Building2,
             visible: canAccessDepartmentReport,
+        },
+        {
+            title: 'Laporan Pemohon per Unit',
+            description: 'Siapa yang paling sering membuat tiket dan dari unit/departemen mana (berdasarkan data pegawai SIMRS).',
+            href: '/reports/requesters',
+            icon: FileText,
+            visible: canAccessRequesterReport,
         },
         {
             title: 'Aktivitas Harian',

@@ -32,6 +32,7 @@ class User extends Authenticatable
         'simrs_nik',
         'badge_id',
         'phone',
+        'telegram_chat_id',
         'source',
         'role',
         'dep_id',
@@ -184,5 +185,20 @@ class User extends Authenticatable
     public function workNotes(): HasMany
     {
         return $this->hasMany(WorkNote::class);
+    }
+
+    // ==================== TELEGRAM ====================
+
+    /**
+     * Chat ID untuk notifikasi Telegram (untuk notifikasi tiket & catatan dari Telegram).
+     */
+    public function routeNotificationForTelegram(): ?string
+    {
+        return $this->telegram_chat_id;
+    }
+
+    public function hasTelegramConnected(): bool
+    {
+        return ! empty($this->telegram_chat_id);
     }
 }

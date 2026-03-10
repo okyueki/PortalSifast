@@ -18,18 +18,37 @@ class TechnicianReportController extends Controller
      */
     public function __invoke(Request $request): Response
     {
-        $user = $request->user();
+        return Inertia::render('reports/technician', $this->reportData($request));
+    }
 
+    /**
+     * Data laporan untuk view (web atau print). Pemohon akan abort 403.
+     *
+     * @return array<string, mixed>
+     */
+    public function reportData(Request $request): array
+    {
+        $user = $request->user();
         if ($user->isPemohon()) {
             abort(403, 'Laporan per teknisi hanya untuk admin dan staff.');
         }
 
         $monthFrom = $request->string('from', now()->subMonths(2)->startOfMonth()->format('Y-m'));
         $monthTo = $request->string('to', now()->format('Y-m'));
-        $assigneeId = $request->integer('assignee_id') ?: null;
+        $assigneeIdInput = $request->input('assignee_id');
+        $assigneeId = null;
+        $showAllTechnicians = false;
+        if ($assigneeIdInput === '__all__' || $assigneeIdInput === '' || $assigneeIdInput === null) {
+            if ($user->isAdmin()) {
+                $showAllTechnicians = true;
+            }
+        } else {
+            $assigneeId = $request->integer('assignee_id') ?: null;
+        }
 
         if ($user->isStaff()) {
             $assigneeId = $user->id;
+            $showAllTechnicians = false;
         }
 
         $from = Carbon::parse($monthFrom.'-01')->startOfDay();
@@ -38,6 +57,7 @@ class TechnicianReportController extends Controller
         $techniciansForFilter = $this->getTechniciansForFilter($user);
 
         $technician = null;
+        $technicians = [];
         $totalTickets = 0;
         $resolvedCount = 0;
         $avgResolutionMinutes = null;
@@ -47,7 +67,9 @@ class TechnicianReportController extends Controller
         $insights = [];
         $recommendations = [];
 
-        if ($assigneeId && $this->canViewTechnician($user, $assigneeId, $techniciansForFilter)) {
+        if ($showAllTechnicians) {
+            $technicians = $this->buildAllTechniciansReport($user, $from, $to);
+        } elseif ($assigneeId && $this->canViewTechnician($user, $assigneeId, $techniciansForFilter)) {
             $driver = DB::connection()->getDriverName();
             $avgResolutionSql = $driver === 'mysql'
                 ? 'AVG(CASE WHEN tickets.resolved_at IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, tickets.created_at, tickets.resolved_at) END) as avg_resolution_minutes'
@@ -111,8 +133,9 @@ class TechnicianReportController extends Controller
             }
         }
 
-        return Inertia::render('reports/technician', [
+        return [
             'technician' => $technician,
+            'technicians' => $technicians,
             'totalTickets' => $totalTickets,
             'resolvedCount' => $resolvedCount,
             'avgResolutionMinutes' => $avgResolutionMinutes,
@@ -126,9 +149,77 @@ class TechnicianReportController extends Controller
             'filters' => [
                 'from' => $monthFrom,
                 'to' => $monthTo,
-                'assignee_id' => $assigneeId,
+                'assignee_id' => $assigneeId ?? ($showAllTechnicians ? '__all__' : null),
             ],
-        ]);
+        ];
+    }
+
+    /**
+     * Laporan agregat per teknisi (semua assignee yang punya tiket closed dalam periode).
+     *
+     * @return array<int, array{id: int, name: string, dep_id: string|null, total_tickets: int, resolved_count: int, avg_resolution_minutes: float|null, categories: array, tags: array}>
+     */
+    private function buildAllTechniciansReport(\App\Models\User $user, Carbon $from, Carbon $to): array
+    {
+        $driver = DB::connection()->getDriverName();
+        $avgResolutionSql = $driver === 'mysql'
+            ? 'AVG(CASE WHEN tickets.resolved_at IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, tickets.created_at, tickets.resolved_at) END) as avg_resolution_minutes'
+            : 'AVG(CASE WHEN tickets.resolved_at IS NOT NULL THEN (julianday(tickets.resolved_at) - julianday(tickets.created_at)) * 24 * 60 END) as avg_resolution_minutes';
+
+        $baseQuery = Ticket::query()
+            ->whereNotNull('tickets.assignee_id')
+            ->whereBetween('tickets.closed_at', [$from, $to])
+            ->join('users as assignee', 'assignee.id', '=', 'tickets.assignee_id');
+
+        $summaryRows = (clone $baseQuery)
+            ->select(
+                'assignee.id',
+                'assignee.name',
+                'assignee.dep_id',
+                DB::raw('COUNT(tickets.id) as total_tickets'),
+                DB::raw('SUM(CASE WHEN tickets.resolved_at IS NOT NULL THEN 1 ELSE 0 END) as resolved_count'),
+                DB::raw($avgResolutionSql)
+            )
+            ->groupBy('assignee.id', 'assignee.name', 'assignee.dep_id')
+            ->orderByDesc(DB::raw('COUNT(tickets.id)'))
+            ->get();
+
+        $catQuery = (clone $baseQuery)
+            ->leftJoin('ticket_categories as cat', 'cat.id', '=', 'tickets.ticket_category_id')
+            ->select('assignee.id as assignee_id', DB::raw('COALESCE(cat.name, \'(Tanpa kategori)\') as name'), DB::raw('COUNT(tickets.id) as count'))
+            ->groupBy('assignee.id', 'cat.name');
+        $catRows = $catQuery->get()->groupBy('assignee_id');
+
+        $tagQuery = (clone $baseQuery)
+            ->join('ticket_ticket_tag as tt', 'tt.ticket_id', '=', 'tickets.id')
+            ->join('ticket_tags as tag', 'tag.id', '=', 'tt.ticket_tag_id')
+            ->select('assignee.id as assignee_id', 'tag.id as tag_id', 'tag.name', DB::raw('COUNT(tickets.id) as count'))
+            ->groupBy('assignee.id', 'tag.id', 'tag.name');
+        $tagRows = $tagQuery->get()->groupBy('assignee_id');
+
+        $result = [];
+        foreach ($summaryRows as $row) {
+            $result[] = [
+                'id' => $row->id,
+                'name' => $row->name,
+                'dep_id' => $row->dep_id,
+                'total_tickets' => (int) $row->total_tickets,
+                'resolved_count' => (int) $row->resolved_count,
+                'avg_resolution_minutes' => $row->avg_resolution_minutes !== null ? round((float) $row->avg_resolution_minutes, 1) : null,
+                'categories' => ($catRows->get($row->id) ?? collect())->map(fn ($r) => [
+                    'id' => null,
+                    'name' => $r->name,
+                    'count' => (int) $r->count,
+                ])->values()->all(),
+                'tags' => ($tagRows->get($row->id) ?? collect())->map(fn ($r) => [
+                    'id' => $r->tag_id,
+                    'name' => $r->name,
+                    'count' => (int) $r->count,
+                ])->values()->all(),
+            ];
+        }
+
+        return $result;
     }
 
     /**

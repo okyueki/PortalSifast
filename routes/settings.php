@@ -3,6 +3,7 @@
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SyncUsersController;
+use App\Http\Controllers\Settings\TelegramController;
 use App\Http\Controllers\Settings\TicketSettingsController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use Illuminate\Support\Facades\Route;
@@ -34,6 +35,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('settings/websocket-status', function () {
         return Inertia::render('settings/websocket-status');
     })->name('settings.websocket-status');
+
+    Route::get('settings/telegram', [TelegramController::class, 'edit'])->name('settings.telegram.edit');
+    Route::post('settings/telegram/connect', [TelegramController::class, 'connect'])->name('settings.telegram.connect');
+    Route::post('settings/telegram/disconnect', [TelegramController::class, 'disconnect'])->name('settings.telegram.disconnect');
 
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');

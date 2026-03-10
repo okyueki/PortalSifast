@@ -30,6 +30,8 @@ import type {
     TicketTag,
 } from '@/types/ticket';
 
+type ProjectOption = { id: number; name: string };
+
 type Props = {
     ticket: Ticket;
     types: TicketType[];
@@ -38,6 +40,7 @@ type Props = {
     statuses: TicketStatus[];
     tags: TicketTag[];
     canDelete?: boolean;
+    projects?: ProjectOption[];
 };
 
 function getStatusColor(color: string): string {
@@ -52,7 +55,7 @@ function getStatusColor(color: string): string {
     return colorMap[color] || colorMap.gray;
 }
 
-export default function TicketEdit({ ticket, types, categories, priorities, statuses, tags = [], canDelete = false }: Props) {
+export default function TicketEdit({ ticket, types, categories, priorities, statuses, tags = [], canDelete = false, projects = [] }: Props) {
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: dashboard().url },
         { title: 'Tiket', href: '/tickets' },
@@ -72,6 +75,7 @@ export default function TicketEdit({ ticket, types, categories, priorities, stat
         ticket_status_id: String(ticket.ticket_status_id),
         asset_no_inventaris: ticket.asset_no_inventaris ?? null,
         tag_ids: (ticket.tags ?? []).map((t) => t.id),
+        project_id: ticket.project_id ? String(ticket.project_id) : '_none',
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -81,6 +85,7 @@ export default function TicketEdit({ ticket, types, categories, priorities, stat
                 ...d,
                 asset_no_inventaris: d.asset_no_inventaris || null,
                 tag_ids: Array.isArray(d.tag_ids) ? d.tag_ids : [],
+                project_id: d.project_id && d.project_id !== '_none' ? parseInt(String(d.project_id), 10) : null,
             }),
         });
     };
@@ -236,6 +241,31 @@ export default function TicketEdit({ ticket, types, categories, priorities, stat
                         </p>
                         <InputError message={errors.asset_no_inventaris} />
                     </div>
+
+                    {/* Project / Rencana (opsional) */}
+                    {projects.length > 0 && (
+                        <div className="grid gap-2">
+                            <Label htmlFor="project_id">Rencana / Project (opsional)</Label>
+                            <Select
+                                value={data.project_id}
+                                onValueChange={(v) => setData('project_id', v)}
+                                disabled={isClosed}
+                            >
+                                <SelectTrigger id="project_id">
+                                    <SelectValue placeholder="Pilih project..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="_none">Tidak ada</SelectItem>
+                                    {projects.map((p) => (
+                                        <SelectItem key={p.id} value={String(p.id)}>
+                                            {p.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <InputError message={errors.project_id} />
+                        </div>
+                    )}
 
                     {/* Priority */}
                     <div className="grid gap-2">

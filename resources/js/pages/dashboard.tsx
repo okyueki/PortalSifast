@@ -248,7 +248,7 @@ export default function Dashboard({
                     <Card className="border-destructive/50">
                         <CardHeader className="flex flex-row items-center justify-between">
                             <CardTitle className="text-destructive">
-                                Tiket Terlambat
+                                Tiket Menggantung
                             </CardTitle>
                             <Link
                                 href="/tickets"

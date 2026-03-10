@@ -48,6 +48,7 @@ class UpdateTicketRequest extends FormRequest
             'asset_no_inventaris' => ['sometimes', 'nullable', 'string', 'max:50'],
             'tag_ids' => ['sometimes', 'nullable', 'array'],
             'tag_ids.*' => ['integer', Rule::exists('ticket_tags', 'id')->where('is_active', true)],
+            'project_id' => ['sometimes', 'nullable', 'integer', Rule::exists('projects', 'id')],
         ];
     }
 

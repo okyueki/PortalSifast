@@ -4,13 +4,17 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DailyActivityReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentReportController;
+use App\Http\Controllers\DepartmentReportPrintController;
 use App\Http\Controllers\EmergencyReportWebController;
 use App\Http\Controllers\InventarisBarangController;
 use App\Http\Controllers\InventarisController;
 use App\Http\Controllers\PegawaiController;
+use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\RequesterReportController;
 use App\Http\Controllers\SlaReportController;
 use App\Http\Controllers\TechnicianReportController;
+use App\Http\Controllers\TechnicianReportPrintController;
 use App\Http\Controllers\TicketAttachmentController;
 use App\Http\Controllers\TicketCollaboratorController;
 use App\Http\Controllers\TicketCommentController;
@@ -51,8 +55,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/sla', SlaReportController::class)->name('reports.sla');
     Route::get('reports/department', DepartmentReportController::class)->name('reports.department');
+    Route::get('reports/department/print', DepartmentReportPrintController::class)->name('reports.department.print');
+    Route::get('reports/requesters', RequesterReportController::class)->name('reports.requesters');
     Route::get('reports/daily-activity', DailyActivityReportController::class)->name('reports.daily-activity');
     Route::get('reports/technician', TechnicianReportController::class)->name('reports.technician');
+    Route::get('reports/technician/print', TechnicianReportPrintController::class)->name('reports.technician.print');
 
     // Laporan Darurat (Emergency / Panic Button) — admin & staff
     Route::get('emergency-reports', [EmergencyReportWebController::class, 'index'])->name('emergency-reports.index');
@@ -67,6 +74,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Inventaris Barang CRUD (Master Barang)
     Route::resource('inventaris-barang', InventarisBarangController::class)->parameters(['inventaris_barang' => 'barang:kode_barang']);
 
+    // Rencana / Project (tracking per project)
+    Route::resource('projects', ProjectController::class);
+
     // Ticket routes (board + statuses must be before resource so not caught as ticket id)
     Route::get('tickets/board', [TicketController::class, 'board'])->name('tickets.board');
     Route::get('tickets/statuses', [TicketStatusController::class, 'index'])->name('tickets.statuses.index');
@@ -74,6 +84,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('tickets/search-for-inventaris', [TicketController::class, 'searchForInventaris'])->name('tickets.search-for-inventaris');
     Route::get('tickets/search-for-user', [TicketController::class, 'searchForUser'])->name('tickets.search-for-user');
     Route::get('tickets/export', [TicketController::class, 'export'])->name('tickets.export');
+    Route::get('tickets/import', [TicketController::class, 'importForm'])->name('tickets.import');
+    Route::get('tickets/import/template', [TicketController::class, 'importTemplate'])->name('tickets.import.template');
+    Route::post('tickets/import', [TicketController::class, 'import'])->name('tickets.import.store');
     Route::resource('tickets', TicketController::class);
     Route::post('tickets/{ticket}/assign-self', [TicketController::class, 'assignToSelf'])->name('tickets.assign-self');
     Route::post('tickets/{ticket}/close', [TicketController::class, 'close'])->name('tickets.close');

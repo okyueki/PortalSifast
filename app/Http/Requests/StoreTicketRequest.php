@@ -35,10 +35,11 @@ class StoreTicketRequest extends FormRequest
             'tag_ids' => ['nullable', 'array'],
             'tag_ids.*' => ['integer', Rule::exists('ticket_tags', 'id')->where('is_active', true)],
             'created_at' => ['nullable', 'date'],
+            'project_id' => ['nullable', 'integer', Rule::exists('projects', 'id')],
         ];
 
-        // Admin dapat memilih pemohon secara manual
-        if ($this->user()?->isAdmin()) {
+        // Admin dan staff (teknisi) dapat memilih pemohon secara manual
+        if ($this->user()?->isAdmin() || $this->user()?->isStaff()) {
             $rules['requester_id'] = ['nullable', 'integer', Rule::exists('users', 'id')];
         }
 

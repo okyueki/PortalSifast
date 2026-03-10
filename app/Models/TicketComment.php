@@ -15,12 +15,14 @@ class TicketComment extends Model
         'user_id',
         'body',
         'is_internal',
+        'is_resolution',
     ];
 
     protected function casts(): array
     {
         return [
             'is_internal' => 'boolean',
+            'is_resolution' => 'boolean',
         ];
     }
 
@@ -46,6 +48,14 @@ class TicketComment extends Model
     public function scopeInternal($query)
     {
         return $query->where('is_internal', true);
+    }
+
+    /**
+     * Komentar yang ditandai sebagai cara penyelesaian masalah (untuk tracking resolusi).
+     */
+    public function scopeResolutions($query)
+    {
+        return $query->where('is_resolution', true);
     }
 
     /**

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\EmergencyReportController;
 use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\OfficerAuthController;
 use App\Http\Controllers\Api\OfficerLocationController;
+use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\WorkNoteController;
 use App\Models\TicketCategory;
 use App\Models\TicketPriority;
@@ -91,6 +92,9 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     });
 });
+
+// Telegram bot webhook (tanpa auth — dipanggil oleh Telegram)
+Route::post('/telegram/webhook', TelegramWebhookController::class)->name('api.telegram.webhook');
 
 // Login email + password (untuk frontend eksternal, mis. Sifast)
 Route::post('/login', LoginController::class);

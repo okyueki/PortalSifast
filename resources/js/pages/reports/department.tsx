@@ -97,14 +97,29 @@ export default function DepartmentReport({
         per_petugas: filters.per_petugas,
     });
 
-    const handleFilter = (e: React.FormEvent) => {
-        e.preventDefault();
+    const buildParams = () => {
         const params = new URLSearchParams();
         params.set('from', data.from);
         params.set('to', data.to);
         if (data.dep_id && data.dep_id !== '__all__') params.set('dep_id', data.dep_id);
         params.set('per_petugas', data.per_petugas ? '1' : '0');
+        return params;
+    };
+
+    const handleFilter = (e: React.FormEvent) => {
+        e.preventDefault();
+        const params = buildParams();
         router.get(`/reports/department?${params.toString()}`);
+    };
+
+    const handleExportPdf = () => {
+        const params = buildParams();
+        params.set('autoprint', '1');
+        window.open(
+            `/reports/department/print?${params.toString()}`,
+            '_blank',
+            'noopener,noreferrer',
+        );
     };
 
     // Ringkasan untuk laporan ke direksi
@@ -133,9 +148,14 @@ export default function DepartmentReport({
                             Tiket yang ditangani per departemen: jumlah, lama penyelesaian, kategori, dan tag. Bisa di-breakdown per petugas.
                         </p>
                     </div>
-                    <Button variant="outline" asChild>
-                        <Link href="/reports">Daftar Laporan</Link>
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" onClick={handleExportPdf}>
+                            Export PDF
+                        </Button>
+                        <Button variant="outline" asChild>
+                            <Link href="/reports">Daftar Laporan</Link>
+                        </Button>
+                    </div>
                 </div>
 
                 <Card>

@@ -35,6 +35,8 @@ type TicketForLink = {
     created_at: string;
 };
 
+type ProjectOption = { id: number; name: string };
+
 type Props = {
     types: TicketType[];
     categories: TicketCategory[];
@@ -42,6 +44,8 @@ type Props = {
     tags: TicketTag[];
     recentTicketsForLink: TicketForLink[];
     canSelectRequester: boolean;
+    projects?: ProjectOption[];
+    initialProjectId?: number | null;
 };
 
 export default function TicketCreate({
@@ -51,6 +55,8 @@ export default function TicketCreate({
     tags = [],
     recentTicketsForLink = [],
     canSelectRequester = false,
+    projects = [],
+    initialProjectId = null,
 }: Props) {
     const { data, setData, post, processing, errors } = useForm({
         ticket_type_id: '',
@@ -64,6 +70,7 @@ export default function TicketCreate({
         tag_ids: [] as number[],
         requester_id: null as number | null,
         created_at: '' as string,
+        project_id: (initialProjectId ?? '') as string | number,
     });
 
     const [filteredCategories, setFilteredCategories] = useState<TicketCategory[]>([]);
@@ -129,6 +136,7 @@ export default function TicketCreate({
                 payload.asset_no_inventaris = formData.asset_no_inventaris || null;
                 payload.tag_ids = Array.isArray(formData.tag_ids) ? formData.tag_ids : [];
                 payload.created_at = formData.created_at && String(formData.created_at).trim() ? formData.created_at : null;
+                payload.project_id = formData.project_id && formData.project_id !== '_none' ? (typeof formData.project_id === 'number' ? formData.project_id : parseInt(String(formData.project_id), 10)) : null;
                 return payload;
             },
         });
@@ -155,7 +163,7 @@ export default function TicketCreate({
                     onSubmit={handleSubmit}
                     className="max-w-2xl space-y-6 rounded-xl border bg-card p-6"
                 >
-                    {/* Requester Selection (Admin Only) */}
+                    {/* Requester Selection (Admin / Teknisi) */}
                     {canSelectRequester && (
                         <div className="grid gap-2">
                             <Label htmlFor="requester_id">
@@ -369,6 +377,33 @@ export default function TicketCreate({
                                 (masalah yang sama muncul lagi).
                             </p>
                             <InputError message={errors.related_ticket_id} />
+                        </div>
+                    )}
+
+                    {/* Project / Rencana (opsional) */}
+                    {projects.length > 0 && (
+                        <div className="grid gap-2">
+                            <Label htmlFor="project_id">Rencana / Project (opsional)</Label>
+                            <Select
+                                value={data.project_id === null || data.project_id === '' ? '_none' : String(data.project_id)}
+                                onValueChange={(v) => setData('project_id', v === '_none' ? '' : v)}
+                            >
+                                <SelectTrigger id="project_id">
+                                    <SelectValue placeholder="Pilih project untuk tracking..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="_none">Tidak ada</SelectItem>
+                                    {projects.map((p) => (
+                                        <SelectItem key={p.id} value={String(p.id)}>
+                                            {p.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Kelompokkan tiket ke dalam rencana/proyek untuk tracking pekerjaan besar.
+                            </p>
+                            <InputError message={errors.project_id} />
                         </div>
                     )}
 

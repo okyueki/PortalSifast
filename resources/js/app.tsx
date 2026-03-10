@@ -5,6 +5,11 @@ import { createRoot } from 'react-dom/client';
 import '../css/app.css';
 import { initializeTheme } from './hooks/use-appearance';
 import './echo.js';
+import { configureEcho } from '@laravel/echo-react';
+
+configureEcho({
+    broadcaster: 'reverb',
+});
 
 // Add Echo and Reverb config to global window type
 declare global {
