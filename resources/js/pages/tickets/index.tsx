@@ -464,6 +464,7 @@ export default function TicketsIndex({
                                     <th className="px-4 py-3 font-medium">Status</th>
                                     <th className="px-4 py-3 font-medium">Rencana</th>
                                     <th className="px-4 py-3 font-medium">Pemohon</th>
+                                    <th className="px-4 py-3 font-medium">Unit</th>
                                     <th className="px-4 py-3 font-medium">Petugas</th>
                                     <th className="px-4 py-3 font-medium">Dibuat</th>
                                     {(canExport || canDelete) && <th className="px-4 py-3 font-medium w-12"></th>}
@@ -472,7 +473,7 @@ export default function TicketsIndex({
                             <tbody>
                                 {tickets.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={(canExport || canDelete) ? 9 : 8} className="p-0">
+                                        <td colSpan={(canExport || canDelete) ? 10 : 9} className="p-0">
                                             <EmptyState
                                                 icon={<Ticket className="size-7" />}
                                                 title={
@@ -572,6 +573,9 @@ export default function TicketsIndex({
                                             </td>
                                             <td className="px-4 py-3 text-muted-foreground">
                                                 {ticket.requester.name}
+                                            </td>
+                                            <td className="px-4 py-3 text-muted-foreground text-xs">
+                                                {ticket.requester.departemen ?? '–'}
                                             </td>
                                             <td className="px-4 py-3 text-muted-foreground">
                                                 {ticket.assignee?.name || (

@@ -6,6 +6,7 @@ use App\Http\Requests\ImportTicketsRequest;
 use App\Http\Requests\StoreTicketRequest;
 use App\Http\Requests\UpdateTicketRequest;
 use App\Models\Inventaris;
+use App\Models\Pegawai;
 use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\TicketActivity;
@@ -150,6 +151,9 @@ class TicketController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        // Enrich requester dengan nama departemen dari pegawai SIMRS (untuk tampilan & export/import)
+        $this->addRequesterDepartemenToTickets($tickets->getCollection());
+
         return Inertia::render('tickets/index', [
             'tickets' => $tickets,
             'statuses' => TicketStatus::active()->ordered()->get(),
@@ -174,6 +178,35 @@ class TicketController extends Controller
         }
 
         return $query->get(['id', 'name', 'dep_id', 'ticket_type_id', 'is_development']);
+    }
+
+    /**
+     * Enrich tiap tiket dengan requester.departemen dari tabel pegawai SIMRS (pegawai.departemen).
+     * Sama seperti di Laporan Pemohon per Unit, agar nama unit/departemen pelapor tampil dan bisa dipakai untuk export/import.
+     *
+     * @param  \Illuminate\Support\Collection<int, Ticket>  $tickets
+     */
+    private function addRequesterDepartemenToTickets(\Illuminate\Support\Collection $tickets): void
+    {
+        $niks = $tickets->pluck('requester.simrs_nik')->filter()->unique()->values()->all();
+        if (empty($niks)) {
+            return;
+        }
+        try {
+            $departemenByNik = Pegawai::query()
+                ->whereIn('nik', $niks)
+                ->get(['nik', 'departemen'])
+                ->keyBy('nik')
+                ->map(fn ($p) => $p->departemen ?? null)
+                ->all();
+        } catch (\Throwable) {
+            $departemenByNik = [];
+        }
+        $tickets->each(function (Ticket $ticket) use ($departemenByNik) {
+            if ($ticket->relationLoaded('requester') && $ticket->requester && $ticket->requester->simrs_nik !== null) {
+                $ticket->requester->departemen = $departemenByNik[$ticket->requester->simrs_nik] ?? null;
+            }
+        });
     }
 
     /**
@@ -892,12 +925,14 @@ class TicketController extends Controller
                 'Status',
                 'Departemen',
                 'Pemohon',
+                'Unit (pemohon)',
                 'Petugas',
                 'Dibuat',
                 'Ditutup',
             ]);
 
             $query->orderBy('created_at', 'desc')->chunk(100, function ($tickets) use ($handle) {
+                $this->addRequesterDepartemenToTickets($tickets);
                 foreach ($tickets as $t) {
                     fputcsv($handle, [
                         $t->ticket_number,
@@ -908,6 +943,7 @@ class TicketController extends Controller
                         $t->status?->name ?? '',
                         $t->dep_id,
                         $t->requester?->name ?? '',
+                        $t->requester?->departemen ?? '',
                         $t->assignee?->name ?? '',
                         $t->created_at?->format('Y-m-d H:i') ?? '',
                         $t->closed_at?->format('Y-m-d H:i') ?? '',

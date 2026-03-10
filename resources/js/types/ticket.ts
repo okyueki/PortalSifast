@@ -49,6 +49,8 @@ export type TicketUser = {
     email: string;
     role: string;
     dep_id: string | null;
+    /** Nama departemen/unit dari pegawai SIMRS (pegawai.departemen), diisi di daftar tiket untuk tampilan & export */
+    departemen?: string | null;
 };
 
 export type TicketComment = {
