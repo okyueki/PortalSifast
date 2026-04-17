@@ -8,6 +8,7 @@ use App\Http\Requests\Api\RespondEmergencyReportRequest;
 use App\Http\Requests\Api\StoreEmergencyReportRequest;
 use App\Models\EmergencyReport;
 use App\Models\User;
+use App\Services\EmergencyFcmService;
 use App\Services\ResolveUserByNikService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,8 @@ use Illuminate\Validation\Rule;
 class EmergencyReportController extends Controller
 {
     public function __construct(
-        private ResolveUserByNikService $resolveUserByNik
+        private ResolveUserByNikService $resolveUserByNik,
+        private EmergencyFcmService $fcmService
     ) {}
 
     /**
@@ -49,6 +51,8 @@ class EmergencyReportController extends Controller
             'device_id' => $validated['device_id'] ?? null,
             'notes' => $validated['notes'] ?? null,
         ]);
+
+        $this->fcmService->notifyOperatorsNewReport($report);
 
         return response()->json([
             'success' => true,
@@ -292,7 +296,7 @@ class EmergencyReportController extends Controller
         $this->authorizeOperator($request);
 
         $query = EmergencyReport::query()
-            ->with('user')
+            ->with('user', 'assignedOperator')
             ->orderByDesc('created_at');
 
         if ($request->filled('status')) {
@@ -312,20 +316,59 @@ class EmergencyReportController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $reports->map(fn (EmergencyReport $r) => [
-                'report_id' => $r->report_id,
-                'status' => $r->status,
-                'category' => $r->category,
-                'latitude' => (float) $r->latitude,
-                'longitude' => (float) $r->longitude,
-                'address' => $r->address,
-                'sender_name' => $r->sender_name,
-                'sender_phone' => $r->sender_phone,
-                'created_at' => $r->created_at->toIso8601String(),
-                'waiting_minutes' => $r->status === EmergencyReport::STATUS_PENDING
-                    ? $r->created_at->diffInMinutes(now())
-                    : null,
-            ]),
+            'data' => $reports->map(fn (EmergencyReport $r) => $this->formatReportForOperator($r)),
+        ]);
+    }
+
+    /**
+     * Format satu laporan untuk response operator (list & detail).
+     *
+     * @return array<string, mixed>
+     */
+    private function formatReportForOperator(EmergencyReport $r): array
+    {
+        $operator = $r->assignedOperator;
+
+        return [
+            'report_id' => $r->report_id,
+            'status' => $r->status,
+            'category' => $r->category,
+            'latitude' => (float) $r->latitude,
+            'longitude' => (float) $r->longitude,
+            'address' => $r->address,
+            'sender_name' => $r->sender_name,
+            'sender_phone' => $r->sender_phone,
+            'notes' => $r->notes,
+            'created_at' => $r->created_at->toIso8601String(),
+            'responded_at' => $r->responded_at?->toIso8601String(),
+            'resolved_at' => $r->resolved_at?->toIso8601String(),
+            'response_notes' => $r->response_notes,
+            'assigned_team' => $r->assigned_team,
+            'waiting_minutes' => $r->status === EmergencyReport::STATUS_PENDING
+                ? $r->created_at->diffInMinutes(now())
+                : null,
+            'assigned_operator' => $operator ? [
+                'id' => $operator->id,
+                'name' => $operator->name,
+                'phone' => $operator->phone,
+            ] : null,
+            'destination_type' => $r->destination_type ?? null,
+            'destination_name' => $r->destination_name ?? null,
+        ];
+    }
+
+    /**
+     * [OPERATOR] Detail satu laporan (untuk refetch by ID tanpa load seluruh list).
+     */
+    public function operatorShow(Request $request, EmergencyReport $emergency_report): JsonResponse
+    {
+        $this->authorizeOperator($request);
+
+        $emergency_report->load('assignedOperator', 'user');
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->formatReportForOperator($emergency_report),
         ]);
     }
 
@@ -338,13 +381,27 @@ class EmergencyReportController extends Controller
 
         $validated = $request->validated();
 
-        $emergency_report->update([
+        $payload = [
             'status' => $validated['status'],
             'response_notes' => $validated['notes'] ?? $emergency_report->response_notes,
             'assigned_team' => $validated['assigned_team'] ?? $emergency_report->assigned_team,
             'assigned_operator_id' => $emergency_report->assigned_operator_id ?? $request->user()->id,
             'responded_at' => $emergency_report->responded_at ?? now(),
-        ]);
+        ];
+        if ($validated['status'] === EmergencyReport::STATUS_RESOLVED) {
+            $payload['resolved_at'] = $emergency_report->resolved_at ?? now();
+            if (array_key_exists('destination_type', $validated)) {
+                $payload['destination_type'] = $validated['destination_type'];
+            }
+            if (array_key_exists('destination_name', $validated)) {
+                $payload['destination_name'] = $validated['destination_name'];
+            }
+        } else {
+            $payload['destination_type'] = null;
+            $payload['destination_name'] = null;
+        }
+        $emergency_report->update($payload);
+        $this->fcmService->notifyReportOwnerStatusUpdated($emergency_report, $validated['status']);
 
         return response()->json([
             'success' => true,

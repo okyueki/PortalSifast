@@ -19,6 +19,9 @@ use App\Models\TicketType;
 use App\Models\User;
 use App\Notifications\TicketAssignedNotification;
 use App\Notifications\TicketCreatedNotification;
+use App\Services\TicketAttachmentStorageService;
+use App\Services\TicketTelegramGroupNotifier;
+use App\Support\TicketResolutionDuration;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -37,119 +40,37 @@ class TicketController extends Controller
         $user = $request->user();
 
         $query = Ticket::query()
-            ->with(['type', 'category', 'subcategory', 'priority', 'status', 'requester', 'assignee', 'group', 'project', 'tags', 'inventaris.barang', 'inventaris.ruang']);
-
-        // Filter berdasarkan role
-        if ($user->isPemohon()) {
-            // Pemohon hanya bisa lihat tiket sendiri
-            $query->where('requester_id', $user->id);
-        } elseif ($user->isStaff()) {
-            // Staff bisa lihat tiket departemennya, ditugaskan ke dia, rekan, atau grupnya
-            $groupIds = \App\Models\TicketGroup::whereHas('members', fn ($q) => $q->where('user_id', $user->id))->pluck('id');
-            $query->where(function ($q) use ($user, $groupIds) {
-                $q->where('dep_id', $user->dep_id)
-                    ->orWhere('assignee_id', $user->id)
-                    ->orWhere('requester_id', $user->id)
-                    ->orWhereHas('collaborators', fn ($q) => $q->where('user_id', $user->id))
-                    ->orWhereIn('ticket_group_id', $groupIds);
-            });
-        }
-        // Admin bisa lihat semua
-
-        // Secara default sembunyikan tiket yang sudah ditutup; bisa ditampilkan via filter "Tampilkan tiket ditutup"
-        if (! $request->boolean('include_closed')) {
-            $query->whereHas('status', fn ($q) => $q->where('is_closed', false));
-        }
-
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('ticket_status_id', $request->status);
-        }
-
-        // Filter by priority
-        if ($request->filled('priority')) {
-            $query->where('ticket_priority_id', $request->priority);
-        }
-
-        // Filter by department
-        if ($request->filled('department') && $user->isAdmin()) {
-            $query->where('dep_id', $request->department);
-        }
-
-        // Filter by assignee
-        if ($request->filled('assignee')) {
-            if ($request->assignee === 'unassigned') {
-                $query->whereNull('assignee_id');
-            } elseif ($request->assignee === 'me') {
-                $query->where('assignee_id', $user->id);
-            } elseif ($request->assignee === 'my_group') {
-                $groupIds = \App\Models\TicketGroup::whereHas('members', fn ($q) => $q->where('user_id', $user->id))->pluck('id');
-                $query->whereIn('ticket_group_id', $groupIds)->whereNull('assignee_id');
-            } else {
-                $query->where('assignee_id', $request->assignee);
-            }
-        }
-
-        // Search
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('ticket_number', 'like', "%{$search}%")
-                    ->orWhere('title', 'like', "%{$search}%");
-            });
-        }
-
-        // Filter by tag
-        if ($request->filled('tag')) {
-            $query->whereHas('tags', fn ($q) => $q->where('ticket_tags.id', $request->tag));
-        }
-
-        // Filter by category (kategori: Pengembangan, Kerusakan jaringan, Perbaikan printer, dll.)
-        if ($request->filled('category')) {
-            $query->where('ticket_category_id', $request->category);
-        }
-
-        // Filter by subcategory (subkategori: printer mana, jaringan mana, dll.)
-        if ($request->filled('subcategory')) {
-            $query->where('ticket_subcategory_id', $request->subcategory);
-        }
-
-        // Filter by project (rencana)
-        if ($request->filled('project')) {
-            $projectVal = $request->project;
-            if ($projectVal === '0' || $projectVal === '__none__') {
-                $query->whereNull('project_id');
-            } else {
-                $query->where('project_id', (int) $projectVal);
-            }
-        }
-
-        // Filter by created_at range (tanggal dibuat)
-        if ($request->filled('created_from') && $request->filled('created_to')) {
-            $query->whereBetween('created_at', [
-                $request->date('created_from')->startOfDay(),
-                $request->date('created_to')->endOfDay(),
+            ->with([
+                'type',
+                'category',
+                'subcategory',
+                'priority',
+                'status',
+                'requester',
+                'assignee',
+                'group',
+                'project',
+                'tags',
+                'inventaris.barang',
+                'inventaris.ruang',
+                'openIssues' => fn ($q) => $q->select(['id', 'ticket_id', 'title', 'status', 'created_at']),
             ]);
-        }
 
-        // Filter by closed_at range (untuk link dari laporan per teknisi)
-        if ($request->filled('closed_from') && $request->filled('closed_to')) {
-            $query->whereNotNull('closed_at')
-                ->whereBetween('closed_at', [
-                    $request->date('closed_from')->startOfDay(),
-                    $request->date('closed_to')->endOfDay(),
-                ]);
-        }
-
-        // Hanya tiket yang sudah resolved (punya resolved_at)
-        if ($request->boolean('resolved_only')) {
-            $query->whereNotNull('resolved_at');
-        }
+        $this->applyTicketListRequestFilters($query, $request, $user);
 
         $tickets = $query
             ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->withQueryString();
+
+        $tickets = $tickets->through(function (Ticket $ticket) {
+            $ticket->setAttribute(
+                'resolution_duration_label',
+                TicketResolutionDuration::format($ticket->created_at, $ticket->closed_at)
+            );
+
+            return $ticket;
+        });
 
         // Enrich requester dengan nama departemen dari pegawai SIMRS (untuk tampilan & export/import)
         $this->addRequesterDepartemenToTickets($tickets->getCollection());
@@ -159,7 +80,7 @@ class TicketController extends Controller
             'statuses' => TicketStatus::active()->ordered()->get(),
             'priorities' => TicketPriority::active()->ordered()->get(),
             'tags' => TicketTag::where('is_active', true)->orderBy('name')->get(['id', 'name', 'slug']),
-            'filters' => $request->only(['status', 'priority', 'department', 'assignee', 'search', 'tag', 'category', 'subcategory', 'project', 'created_from', 'created_to', 'closed_from', 'closed_to', 'resolved_only', 'include_closed']),
+            'filters' => $request->only(['status', 'priority', 'department', 'assignee', 'search', 'tag', 'category', 'subcategory', 'project', 'created_from', 'created_to', 'closed_from', 'closed_to', 'resolved_only', 'include_closed', 'draft']),
             'categories' => $this->getCategoriesForTicketList($user),
             'projects' => Project::query()->orderBy('name')->get(['id', 'name']),
             'canExport' => $user->isAdmin() || $user->isStaff(),
@@ -178,6 +99,147 @@ class TicketController extends Controller
         }
 
         return $query->get(['id', 'name', 'dep_id', 'ticket_type_id', 'is_development']);
+    }
+
+    /**
+     * Filter query daftar tiket (index & export CSV) agar selaras dengan filter UI.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Ticket>  $query
+     */
+    private function applyTicketListRequestFilters(\Illuminate\Database\Eloquent\Builder $query, Request $request, User $user): void
+    {
+        $isDraftMode = $request->boolean('draft');
+
+        if ($isDraftMode) {
+            $query->draft();
+
+            if ($user->isAdmin()) {
+                // semua draf
+            } elseif ($user->isStaff()) {
+                // Sama seperti tiket terbit: anggota tim satu departemen (dan terkait) ikut melihat draf
+                $groupIds = \App\Models\TicketGroup::whereHas('members', fn ($q) => $q->where('user_id', $user->id))->pluck('id');
+                $query->where(function ($q) use ($user, $groupIds) {
+                    $q->where('dep_id', $user->dep_id)
+                        ->orWhere('assignee_id', $user->id)
+                        ->orWhere('requester_id', $user->id)
+                        ->orWhereHas('collaborators', fn ($q) => $q->where('user_id', $user->id))
+                        ->orWhereIn('ticket_group_id', $groupIds);
+                });
+            } else {
+                $query->where('requester_id', $user->id);
+            }
+        } else {
+            $query->published();
+
+            if ($user->isPemohon()) {
+                $query->where('requester_id', $user->id);
+            } elseif ($user->isStaff()) {
+                $groupIds = \App\Models\TicketGroup::whereHas('members', fn ($q) => $q->where('user_id', $user->id))->pluck('id');
+                $query->where(function ($q) use ($user, $groupIds) {
+                    $q->where('dep_id', $user->dep_id)
+                        ->orWhere('assignee_id', $user->id)
+                        ->orWhere('requester_id', $user->id)
+                        ->orWhereHas('collaborators', fn ($q) => $q->where('user_id', $user->id))
+                        ->orWhereIn('ticket_group_id', $groupIds);
+                });
+            }
+        }
+
+        if (! $isDraftMode && ! $request->boolean('include_closed')) {
+            $query->whereHas('status', fn ($q) => $q->where('is_closed', false));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('ticket_status_id', $request->status);
+        }
+
+        if ($request->filled('priority')) {
+            $query->where('ticket_priority_id', $request->priority);
+        }
+
+        if ($request->filled('department') && $user->isAdmin()) {
+            $query->where('dep_id', $request->department);
+        }
+
+        if ($request->filled('assignee')) {
+            if ($request->assignee === 'unassigned') {
+                $query->whereNull('assignee_id');
+            } elseif ($request->assignee === 'me') {
+                $query->where('assignee_id', $user->id);
+            } elseif ($request->assignee === 'my_group') {
+                $groupIds = \App\Models\TicketGroup::whereHas('members', fn ($q) => $q->where('user_id', $user->id))->pluck('id');
+                $query->whereIn('ticket_group_id', $groupIds)->whereNull('assignee_id');
+            } else {
+                $query->where('assignee_id', $request->assignee);
+            }
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('ticket_number', 'like', "%{$search}%")
+                    ->orWhere('title', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('tag')) {
+            $query->whereHas('tags', fn ($q) => $q->where('ticket_tags.id', $request->tag));
+        }
+
+        if ($request->filled('category')) {
+            $query->where('ticket_category_id', $request->category);
+        }
+
+        if ($request->filled('subcategory')) {
+            $query->where('ticket_subcategory_id', $request->subcategory);
+        }
+
+        if ($request->filled('project')) {
+            $projectVal = $request->project;
+            if ($projectVal === '0' || $projectVal === '__none__') {
+                $query->whereNull('project_id');
+            } else {
+                $query->where('project_id', (int) $projectVal);
+            }
+        }
+
+        if ($request->filled('created_from') && $request->filled('created_to')) {
+            $query->whereBetween('created_at', [
+                $request->date('created_from')->startOfDay(),
+                $request->date('created_to')->endOfDay(),
+            ]);
+        } else {
+            if ($request->filled('from')) {
+                $query->whereDate('created_at', '>=', $request->from);
+            }
+            if ($request->filled('to')) {
+                $query->whereDate('created_at', '<=', $request->to);
+            }
+        }
+
+        if ($request->filled('closed_from') && $request->filled('closed_to')) {
+            $query->whereNotNull('closed_at')
+                ->whereBetween('closed_at', [
+                    $request->date('closed_from')->startOfDay(),
+                    $request->date('closed_to')->endOfDay(),
+                ]);
+        }
+
+        if ($request->boolean('resolved_only')) {
+            $query->whereNotNull('resolved_at');
+        }
+    }
+
+    /**
+     * Judul masalah terbuka digabung untuk sel CSV (boleh beberapa, dipisah " | ").
+     */
+    private function formatOpenIssuesForCsvExport(Ticket $ticket): string
+    {
+        if (! $ticket->relationLoaded('openIssues') || $ticket->openIssues->isEmpty()) {
+            return '';
+        }
+
+        return $ticket->openIssues->pluck('title')->filter()->implode(' | ');
     }
 
     /**
@@ -219,6 +281,7 @@ class TicketController extends Controller
 
         $query = Ticket::query()
             ->with(['type', 'category', 'priority', 'status', 'requester', 'assignee', 'tags'])
+            ->published()
             ->whereHas('status', fn ($q) => $q->where('is_active', true));
 
         if ($user->isPemohon()) {
@@ -379,7 +442,7 @@ class TicketController extends Controller
 
     private function getTicketsForRelatedSelect(User $user): \Illuminate\Database\Eloquent\Builder
     {
-        $query = Ticket::query();
+        $query = Ticket::query()->published();
 
         if ($user->isPemohon()) {
             $query->where('requester_id', $user->id);
@@ -413,11 +476,15 @@ class TicketController extends Controller
         $newStatus = TicketStatus::where('slug', TicketStatus::SLUG_NEW)->first();
 
         // Calculate SLA due dates
-        $slaDates = $this->calculateSlaDates(
-            $validated['ticket_type_id'],
-            $validated['ticket_priority_id'],
-            $validated['ticket_category_id'] ?? null
-        );
+        $isDraft = (bool) ($validated['is_draft'] ?? false);
+
+        $slaDates = $isDraft
+            ? ['response_due_at' => null, 'resolution_due_at' => null]
+            : $this->calculateSlaDates(
+                $validated['ticket_type_id'],
+                $validated['ticket_priority_id'],
+                $validated['ticket_category_id'] ?? null
+            );
 
         // Determine department: from category if set, otherwise default to IT
         $depId = $category?->dep_id ?? 'IT';
@@ -441,6 +508,12 @@ class TicketController extends Controller
             'related_ticket_id' => $validated['related_ticket_id'] ?? null,
             'asset_no_inventaris' => $validated['asset_no_inventaris'] ?? null,
             'project_id' => $validated['project_id'] ?? null,
+            'is_draft' => $isDraft,
+            'published_at' => $isDraft ? null : now(),
+            'plan_ideas' => $validated['plan_ideas'] ?? null,
+            'plan_tools' => $validated['plan_tools'] ?? null,
+            'budget_estimate' => $validated['budget_estimate'] ?? null,
+            'budget_notes' => $validated['budget_notes'] ?? null,
             'response_due_at' => $slaDates['response_due_at'],
             'resolution_due_at' => $slaDates['resolution_due_at'],
         ]);
@@ -457,18 +530,32 @@ class TicketController extends Controller
             $ticket->refresh();
         }
 
-        // Log activity
-        $ticket->logActivity(TicketActivity::ACTION_CREATED, null, null, 'Tiket dibuat');
+        $this->normalizeDraftPlanFields($ticket);
 
-        // Notify staff in department
+        $this->storeAttachmentsFromCreateRequest($request, $ticket);
+
+        // Log activity
+        $ticket->logActivity(
+            TicketActivity::ACTION_CREATED,
+            null,
+            null,
+            $isDraft ? 'Draf tiket dibuat' : 'Tiket dibuat'
+        );
+
+        $notificationKind = $isDraft ? 'draft' : 'new';
+
         $staffInDept = User::where('role', 'staff')->where('dep_id', $depId)->get();
         foreach ($staffInDept as $staff) {
-            $staff->notify(new TicketCreatedNotification($ticket));
+            $staff->notify(new TicketCreatedNotification($ticket, $notificationKind));
         }
+
+        TicketTelegramGroupNotifier::notifyNewTicket($ticket, $notificationKind);
 
         return redirect()
             ->route('tickets.show', $ticket)
-            ->with('success', "Tiket #{$ticket->ticket_number} berhasil dibuat.");
+            ->with('success', $isDraft
+                ? "Draf #{$ticket->ticket_number} berhasil disimpan."
+                : "Tiket #{$ticket->ticket_number} berhasil dibuat.");
     }
 
     /**
@@ -558,6 +645,7 @@ class TicketController extends Controller
             'canManageCollaborators' => $user->can('manageCollaborators', $ticket),
             'canManageVendorCosts' => $user->can('manageVendorCosts', $ticket),
             'canResolveIssue' => $user->can('changeStatus', $ticket),
+            'canPublish' => $user->can('publish', $ticket),
         ]);
     }
 
@@ -579,6 +667,7 @@ class TicketController extends Controller
             'priorities' => TicketPriority::active()->ordered()->get(),
             'statuses' => TicketStatus::active()->ordered()->get(),
             'tags' => TicketTag::where('is_active', true)->orderBy('name')->get(['id', 'name', 'slug']),
+            'canSelectRequester' => $user->isAdmin() || $user->isStaff(),
             'canDelete' => $user->can('delete', $ticket),
             'projects' => Project::query()->orderBy('name')->get(['id', 'name']),
         ]);
@@ -596,6 +685,9 @@ class TicketController extends Controller
 
         // Track changes for activity log
         $changes = [];
+
+        /** @var array{type: 'assigned', assignee: User, by: User}|array{type: 'unassigned', previous: string, by: User}|null */
+        $telegramAssigneeGroupEvent = null;
 
         // Update status
         if (isset($validated['ticket_status_id']) && $ticket->ticket_status_id !== $validated['ticket_status_id']) {
@@ -632,26 +724,41 @@ class TicketController extends Controller
 
                 if ($newAssigneeId) {
                     $newAssignee = User::find($newAssigneeId);
-                    $changes[] = ['action' => TicketActivity::ACTION_ASSIGNED, 'old' => $oldAssignee, 'new' => $newAssignee->name];
+                    if ($newAssignee === null) {
+                        $ticket->assignee_id = $ticket->getOriginal('assignee_id');
+                    } else {
+                        $changes[] = ['action' => TicketActivity::ACTION_ASSIGNED, 'old' => $oldAssignee, 'new' => $newAssignee->name];
 
-                    $newAssignee->notify(new TicketAssignedNotification($ticket, $user));
+                        $telegramAssigneeGroupEvent = [
+                            'type' => 'assigned',
+                            'assignee' => $newAssignee,
+                            'by' => $user,
+                        ];
 
-                    // Set first response time if not set
-                    if (! $ticket->first_response_at) {
-                        $ticket->first_response_at = now();
-                    }
+                        $newAssignee->notify(new TicketAssignedNotification($ticket, $user));
 
-                    // Update status to "Ditugaskan" if still "Baru"
-                    $currentStatus = $ticket->status;
-                    if ($currentStatus->slug === TicketStatus::SLUG_NEW) {
-                        $assignedStatus = TicketStatus::where('slug', TicketStatus::SLUG_ASSIGNED)->first();
-                        if ($assignedStatus) {
-                            $ticket->ticket_status_id = $assignedStatus->id;
-                            $changes[] = ['action' => TicketActivity::ACTION_STATUS_CHANGED, 'old' => $currentStatus->name, 'new' => $assignedStatus->name];
+                        // Set first response time if not set
+                        if (! $ticket->first_response_at) {
+                            $ticket->first_response_at = now();
+                        }
+
+                        // Update status to "Ditugaskan" if still "Baru"
+                        $currentStatus = $ticket->status;
+                        if ($currentStatus->slug === TicketStatus::SLUG_NEW) {
+                            $assignedStatus = TicketStatus::where('slug', TicketStatus::SLUG_ASSIGNED)->first();
+                            if ($assignedStatus) {
+                                $ticket->ticket_status_id = $assignedStatus->id;
+                                $changes[] = ['action' => TicketActivity::ACTION_STATUS_CHANGED, 'old' => $currentStatus->name, 'new' => $assignedStatus->name];
+                            }
                         }
                     }
                 } else {
                     $changes[] = ['action' => TicketActivity::ACTION_UNASSIGNED, 'old' => $oldAssignee, 'new' => null];
+                    $telegramAssigneeGroupEvent = [
+                        'type' => 'unassigned',
+                        'previous' => $oldAssignee,
+                        'by' => $user,
+                    ];
                 }
             }
         }
@@ -667,6 +774,20 @@ class TicketController extends Controller
             $newPriority = TicketPriority::find($validated['ticket_priority_id']);
             $ticket->ticket_priority_id = $validated['ticket_priority_id'];
             $changes[] = ['action' => TicketActivity::ACTION_PRIORITY_CHANGED, 'old' => $oldPriority, 'new' => $newPriority->name];
+        }
+
+        // Update requester (admin/staff only)
+        if (array_key_exists('requester_id', $validated) && ($user->isAdmin() || $user->isStaff())) {
+            $newRequesterId = $validated['requester_id'];
+            if ($newRequesterId !== null && $ticket->requester_id !== $newRequesterId) {
+                $oldRequester = $ticket->requester?->name ?? '—';
+                $newRequester = User::find($newRequesterId);
+
+                if ($newRequester !== null) {
+                    $ticket->requester_id = $newRequester->id;
+                    $changes[] = ['action' => TicketActivity::ACTION_REQUESTER_CHANGED, 'old' => $oldRequester, 'new' => $newRequester->name];
+                }
+            }
         }
 
         // Update due date (only for development tickets by authorized users)
@@ -691,20 +812,90 @@ class TicketController extends Controller
         if (isset($validated['description'])) {
             $ticket->description = $validated['description'];
         }
+        if (array_key_exists('plan_ideas', $validated)) {
+            $ticket->plan_ideas = $validated['plan_ideas'];
+        }
+        if (array_key_exists('plan_tools', $validated)) {
+            $ticket->plan_tools = $validated['plan_tools'];
+        }
+        if (array_key_exists('budget_estimate', $validated)) {
+            $ticket->budget_estimate = $validated['budget_estimate'];
+        }
+        if (array_key_exists('budget_notes', $validated)) {
+            $ticket->budget_notes = $validated['budget_notes'];
+        }
         if (array_key_exists('project_id', $validated)) {
             $ticket->project_id = $validated['project_id'] ?: null;
         }
 
         $ticket->save();
+        $this->normalizeDraftPlanFields($ticket);
 
         // Log all changes
         foreach ($changes as $change) {
             $ticket->logActivity($change['action'], $change['old'], $change['new']);
         }
 
+        if ($telegramAssigneeGroupEvent !== null) {
+            $ticket->refresh();
+            if ($telegramAssigneeGroupEvent['type'] === 'assigned') {
+                TicketTelegramGroupNotifier::notifyTicketAssigned(
+                    $ticket,
+                    $telegramAssigneeGroupEvent['assignee'],
+                    $telegramAssigneeGroupEvent['by']
+                );
+            } elseif ($telegramAssigneeGroupEvent['type'] === 'unassigned') {
+                TicketTelegramGroupNotifier::notifyTicketUnassigned(
+                    $ticket,
+                    $telegramAssigneeGroupEvent['previous'],
+                    $telegramAssigneeGroupEvent['by']
+                );
+            }
+        }
+
         return redirect()
             ->route('tickets.show', $ticket)
             ->with('success', 'Tiket berhasil diperbarui.');
+    }
+
+    /**
+     * Publish draft ticket as active ticket with SLA and notifications.
+     */
+    public function publish(Ticket $ticket): RedirectResponse
+    {
+        $this->authorize('publish', $ticket);
+
+        if (! $ticket->is_draft) {
+            return redirect()
+                ->route('tickets.show', $ticket)
+                ->with('info', 'Tiket ini sudah dipublikasikan.');
+        }
+
+        $slaDates = $this->calculateSlaDates(
+            $ticket->ticket_type_id,
+            $ticket->ticket_priority_id,
+            $ticket->ticket_category_id
+        );
+
+        $ticket->is_draft = false;
+        $ticket->published_at = now();
+        $ticket->response_due_at = $slaDates['response_due_at'];
+        $ticket->resolution_due_at = $slaDates['resolution_due_at'];
+        $ticket->save();
+        $this->normalizeDraftPlanFields($ticket);
+
+        $ticket->logActivity(TicketActivity::ACTION_CREATED, null, null, 'Draf dipublikasikan menjadi tiket aktif');
+
+        $staffInDept = User::where('role', 'staff')->where('dep_id', $ticket->dep_id)->get();
+        foreach ($staffInDept as $staff) {
+            $staff->notify(new TicketCreatedNotification($ticket, 'published'));
+        }
+
+        TicketTelegramGroupNotifier::notifyNewTicket($ticket, 'published');
+
+        return redirect()
+            ->route('tickets.show', $ticket)
+            ->with('success', "Draf #{$ticket->ticket_number} berhasil dipublikasikan.");
     }
 
     /**
@@ -737,6 +928,9 @@ class TicketController extends Controller
         $ticket->save();
 
         $ticket->logActivity(TicketActivity::ACTION_ASSIGNED, $oldAssignee, $user->name, 'Mengambil tiket sendiri');
+
+        $ticket->refresh();
+        TicketTelegramGroupNotifier::notifyTicketTakenBySelf($ticket, $user);
 
         return redirect()
             ->route('tickets.show', $ticket)
@@ -875,60 +1069,44 @@ class TicketController extends Controller
         }
 
         $query = Ticket::query()
-            ->with(['type', 'category', 'priority', 'status', 'requester', 'assignee']);
-
-        if ($user->isStaff()) {
-            $query->where(function ($q) use ($user) {
-                $q->where('dep_id', $user->dep_id)
-                    ->orWhere('assignee_id', $user->id)
-                    ->orWhere('requester_id', $user->id);
-            });
-        }
-
-        if (! $request->boolean('include_closed')) {
-            $query->whereHas('status', fn ($q) => $q->where('is_closed', false));
-        }
-
-        if ($request->filled('status')) {
-            $query->where('ticket_status_id', $request->status);
-        }
-        if ($request->filled('department')) {
-            $query->where('dep_id', $request->department);
-        }
-        if ($request->filled('category')) {
-            $query->where('ticket_category_id', $request->category);
-        }
-        if ($request->filled('subcategory')) {
-            $query->where('ticket_subcategory_id', $request->subcategory);
-        }
-        if ($request->filled('created_from') && $request->filled('created_to')) {
-            $query->whereBetween('created_at', [
-                $request->date('created_from')->startOfDay(),
-                $request->date('created_to')->endOfDay(),
+            ->with([
+                'type',
+                'category',
+                'subcategory',
+                'priority',
+                'status',
+                'requester',
+                'assignee',
+                'project',
+                'tags',
+                'openIssues' => fn ($q) => $q->select(['id', 'ticket_id', 'title', 'status', 'created_at']),
             ]);
-        } elseif ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', $request->from);
-        } elseif ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', $request->to);
-        }
+
+        $this->applyTicketListRequestFilters($query, $request, $user);
 
         $filename = 'tickets-'.now()->format('Y-m-d-His').'.csv';
 
         return ResponseFacade::streamDownload(function () use ($query) {
             $handle = fopen('php://output', 'w');
+            fwrite($handle, "\xEF\xBB\xBF");
             fputcsv($handle, [
                 'No. Tiket',
                 'Judul',
                 'Tipe',
                 'Kategori',
+                'Subkategori',
                 'Prioritas',
                 'Status',
+                'Masalah (terbuka)',
+                'Rencana',
                 'Departemen',
                 'Pemohon',
                 'Unit (pemohon)',
                 'Petugas',
+                'Tag',
                 'Dibuat',
                 'Ditutup',
+                'Lama penyelesaian',
             ]);
 
             $query->orderBy('created_at', 'desc')->chunk(100, function ($tickets) use ($handle) {
@@ -939,14 +1117,19 @@ class TicketController extends Controller
                         $t->title,
                         $t->type?->name ?? '',
                         $t->category?->name ?? '',
+                        $t->subcategory?->name ?? '',
                         $t->priority?->name ?? '',
                         $t->status?->name ?? '',
+                        $this->formatOpenIssuesForCsvExport($t),
+                        $t->project?->name ?? '',
                         $t->dep_id,
                         $t->requester?->name ?? '',
                         $t->requester?->departemen ?? '',
                         $t->assignee?->name ?? '',
+                        $t->tags->pluck('name')->implode(', '),
                         $t->created_at?->format('Y-m-d H:i') ?? '',
                         $t->closed_at?->format('Y-m-d H:i') ?? '',
+                        TicketResolutionDuration::format($t->created_at, $t->closed_at) ?? '',
                     ]);
                 }
             });
@@ -1137,10 +1320,13 @@ class TicketController extends Controller
                     'assignee_id' => null,
                     'title' => mb_substr($title, 0, 255),
                     'description' => $description !== '' ? $description : null,
+                    'is_draft' => false,
+                    'published_at' => now(),
                     'response_due_at' => $slaDates['response_due_at'],
                     'resolution_due_at' => $slaDates['resolution_due_at'],
                 ]);
                 $ticket->logActivity(TicketActivity::ACTION_CREATED, null, null, 'Tiket dibuat (impor CSV)', $user->id);
+                TicketTelegramGroupNotifier::notifyNewTicket($ticket);
                 $created++;
             } catch (\Throwable $e) {
                 $errors[] = "Baris {$rowNum}: {$e->getMessage()}";
@@ -1240,5 +1426,58 @@ class TicketController extends Controller
             'response_due_at' => $slaRule->response_minutes ? now()->addMinutes($slaRule->response_minutes) : null,
             'resolution_due_at' => $slaRule->resolution_minutes ? now()->addMinutes($slaRule->resolution_minutes) : null,
         ];
+    }
+
+    private function normalizeDraftPlanFields(Ticket $ticket): void
+    {
+        $updates = [];
+
+        if (is_string($ticket->plan_ideas) && trim($ticket->plan_ideas) === '') {
+            $updates['plan_ideas'] = null;
+        }
+        if (is_string($ticket->plan_tools) && trim($ticket->plan_tools) === '') {
+            $updates['plan_tools'] = null;
+        }
+        if (is_string($ticket->budget_notes) && trim($ticket->budget_notes) === '') {
+            $updates['budget_notes'] = null;
+        }
+
+        if ($updates !== []) {
+            $ticket->forceFill($updates)->saveQuietly();
+        }
+    }
+
+    /**
+     * Simpan lampiran dari form buat tiket (multipart attachments[]).
+     */
+    private function storeAttachmentsFromCreateRequest(Request $request, Ticket $ticket): void
+    {
+        $files = $request->file('attachments', []);
+        if ($files === []) {
+            return;
+        }
+
+        foreach ($files as $file) {
+            if ($file === null || ! $file->isValid()) {
+                continue;
+            }
+
+            try {
+                $attachment = TicketAttachmentStorageService::storeOnTicket(
+                    $file,
+                    $ticket,
+                    $request->user()
+                );
+            } catch (\RuntimeException) {
+                continue;
+            }
+
+            $ticket->logActivity(
+                TicketActivity::ACTION_ATTACHMENT_ADDED,
+                null,
+                $attachment->filename,
+                'Menambahkan lampiran'
+            );
+        }
     }
 }

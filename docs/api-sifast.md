@@ -7,8 +7,11 @@
 
 Dokumen ini menyatukan **semua endpoint API** yang dipakai frontend Sifast (aplikasi kepegawaian, panic button, tracking petugas, dll.) dan **diselaraskan dengan fitur yang sudah ada** di PortalSifast. Semua fitur mengikuti pola auth, base URL, dan format response yang sama.
 
+**Standar integrasi & checklist dokumentasi:** [STANDARD-API-INTEGRASI-KEPEGAWAIAN.md](./STANDARD-API-INTEGRASI-KEPEGAWAIAN.md).
+
 **Status Implementasi:**
 - ✅ **Ticketing & User:** Sudah tersedia dan berjalan
+- ✅ **Payroll (slip gaji):** Sudah tersedia — **pola NIK sama persis tiket** (token service + `?nik=`), lihat [API-TICKETING.md](./API-TICKETING.md) bagian *Payroll* dan [api-documentation.md](./api-documentation.md) bagian Payroll
 - ✅ **Emergency Reports:** Sudah tersedia dan berjalan
 - ✅ **Officer Tracking:** Sudah diimplementasikan (login officer, update lokasi, get officer-location)
 
@@ -22,7 +25,8 @@ Dokumen ini menyatukan **semua endpoint API** yang dipakai frontend Sifast (apli
 2. User diidentifikasi dengan **NIK** di API eksternal (query/body). Untuk pengguna internal, identitas dari session/token login yang ada.
 3. Format response konsisten: `{ "success": true|false, "data": {...}, "message": "...", "errors": {...} }`.
 4. Untuk detail lengkap endpoint ticketing, lihat `docs/API-TICKETING.md`.
-5. Officer Tracking (Section 4): petugas internal pakai **login yang ada**; endpoint login NIK/badge_id tersedia untuk integrasi eksternal (mis. aplikasi mobile).
+5. **Payroll:** identitas pegawai **sama seperti tiket** — Bearer token yang sama + **`nik`** (`GET /api/sifast/payroll?nik=...`, atau `?simrs_nik=...`, atau header **`X-Sifast-Nik` / `X-Nik`** jika tidak ingin NIK di URL). Tanpa salah satu ini, token service akan ditolak. Detail response/import: `docs/api-documentation.md`.
+6. Officer Tracking (Section 4): petugas internal pakai **login yang ada**; endpoint login NIK/badge_id tersedia untuk integrasi eksternal (mis. aplikasi mobile).
 
 ---
 
@@ -36,7 +40,7 @@ Authorization: Bearer {token}
 
 - **Token** di-generate sekali di PortalSifast (`php artisan api:token:generate kepegawaian-app`) untuk aplikasi eksternal, atau didapat dari **login yang ada** (email + password) untuk pengguna internal.
 - **Login internal:** satu login saja (email + password). Semua user — pelapor maupun petugas — dari tabel **`users`**. Petugas = user dengan `role` = `'staff'` dan `dep_id` ∈ **`['DRIVER', 'IGD']`** (konstanta `User::OFFICER_DEP_IDS`).
-- Untuk endpoint yang butuh identitas user (tiket, laporan darurat): kirim **`nik`** (query/body) untuk API eksternal; untuk internal, identitas dari token/session login.
+- Untuk endpoint yang butuh identitas user (**tiket, payroll, laporan darurat**): kirim **`nik`** (query/body) untuk API eksternal — **satu variabel NIK** seperti di [API-TICKETING.md](./API-TICKETING.md); untuk internal, identitas dari token/session login.
 - **Officer (petugas):** Untuk akses internal, petugas login seperti user biasa; token dari login itu dipakai untuk endpoint officer. Untuk integrasi eksternal (mis. app mobile), tersedia endpoint **POST /api/sifast/officer/auth/login** dengan NIK/badge_id + password.
 
 Detail lengkap: lihat **`docs/API-TICKETING.md`** bagian Autentikasi dan "Login dan Get Nama User".
@@ -55,10 +59,13 @@ Endpoint berikut **sudah tersedia** dan dipakai untuk ticketing + user.
 | Detail tiket | GET | `/api/tickets/{id}?nik={nik}` atau `/api/sifast/ticket/{id}?nik={nik}` |
 | Tambah komentar | POST | `/api/tickets/{id}/comments` atau `/api/sifast/ticket/{id}/comments` |
 | Master: tipe/kategori/prioritas/status tiket | GET | `/api/sifast/ticket-type`, `/api/sifast/ticket-category`, `/api/sifast/ticket-priority`, `/api/sifast/ticket-status` |
+| **Daftar gaji (milik NIK)** | GET | `/api/sifast/payroll?nik={nik}&page=1&per_page=12` — **wajib `nik`** (sama token + pola seperti tiket) |
+| **Detail gaji** | GET | `/api/sifast/payroll/{id}` — setelah daftar, pakai `id` dari item |
+| **Import gaji (admin)** | POST | `/api/sifast/payroll/import` — lihat [api-documentation.md](./api-documentation.md) |
 
 Format response yang dipakai: `{ "success": true, "data": { ... }, "message": "..." }`. Error validasi: `{ "message": "...", "errors": { "field": ["..."] } }`.
 
-**Dokumentasi lengkap (request body, response, contoh):** **`docs/API-TICKETING.md`**.
+**Dokumentasi lengkap:** tiket & pola NIK → **`docs/API-TICKETING.md`** (termasuk bagian *Payroll*). Format pagination payroll, `period`, terbilang → **`docs/api-documentation.md`**.
 
 ---
 
@@ -667,17 +674,17 @@ Saat diimplementasikan, bisa mengikuti konfigurasi Laravel yang ada:
 
 ## 8. Ringkasan sinkronisasi dengan fitur yang ada
 
-| Aspek | Yang sudah ada (Ticketing) | Emergency (sudah ada) | Officer Tracking (spesifikasi) |
-|-------|----------------------------|----------------------|--------------------------------|
-| Base URL | `/api`, `/api/sifast` | `/api/sifast/emergency` | `/api/sifast/officer` |
-| Auth | Bearer token (Sanctum) | Sama | Sama (token dari login biasa untuk internal) |
-| Identitas user | `nik` (query/body) | `nik` (query/body) | Token (login biasa untuk internal; login NIK/badge_id untuk eksternal) |
-| Response | `success`, `data`, `message`, `errors` | Sama | Sama |
-| Pagination | `data` + `meta` | Sama | Tidak ada (real-time) |
-| User auto-create | By NIK dari SIMRS | Bisa pakai mekanisme yang sama | Petugas = user yang sudah ada (role 'staff', dep_id 'DRIVER'/'IGD') |
+| Aspek | Ticketing | **Payroll** | Emergency | Officer Tracking |
+|-------|-----------|-------------|-----------|------------------|
+| Base URL | `/api/sifast` | `/api/sifast/payroll` | `/api/sifast/emergency` | `/api/sifast/officer` |
+| Auth | Bearer (Sanctum) | **Sama token** | Sama | Sama (internal: login biasa) |
+| Identitas (app eksternal) | **`nik` query/body** | **`nik` query** (sama variabel dengan tiket) | `nik` query/body | Token / NIK+badge login officer |
+| Response | `success`, `data`, … | Pagination Laravel (lihat api-documentation) | `success`, `data`, … | `success`, `data`, … |
+| User / data | Auto-create by NIK SIMRS | Gaji by `simrs_nik` = NIK | Auto-create by NIK | Petugas = user `staff` + dep DRIVER/IGD |
 
 **Perbedaan dengan dokumentasi frontend (`api-documentation.md`):**
 
+0. **Payroll:** `api-documentation.md` berisi detail field response, import CSV, skenario lanjutan token login. **Pola integrasi NIK untuk app kepegawaian = sama tiket** ([API-TICKETING.md](./API-TICKETING.md)).
 1. **Base URL:** Frontend minta `/v1` atau `/emergency/reports` tanpa prefix. Di sini diselaraskan jadi `/api/sifast/emergency` dan `/api/sifast/officer` (konsisten dengan ticketing).
 2. **NIK di Emergency Reports:** Frontend spec tidak pakai NIK di body. Di sini **tetap pakai NIK** (selaras dengan ticketing) untuk identifikasi pelapor dan auto-create user dari SIMRS.
 3. **Auth:** Frontend spec pakai "JWT" (tidak spesifik). Di sini **tetap Sanctum** (sudah terpasang di PortalSifast).

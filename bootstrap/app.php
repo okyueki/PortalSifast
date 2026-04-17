@@ -22,6 +22,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
 
+        // API SiFast (frontend kepegawaian) memakai Bearer token saja; tidak perlu CSRF cookie
+        $middleware->validateCsrfTokens(['api/sifast/*']);
+
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
         $middleware->alias([

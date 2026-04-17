@@ -6,6 +6,7 @@ use App\Http\Requests\StoreTicketAttachmentRequest;
 use App\Models\Ticket;
 use App\Models\TicketActivity;
 use App\Models\TicketAttachment;
+use App\Services\TicketAttachmentStorageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 
@@ -16,17 +17,17 @@ class TicketAttachmentController extends Controller
      */
     public function store(StoreTicketAttachmentRequest $request, Ticket $ticket): RedirectResponse
     {
-        $file = $request->file('file');
-
-        $path = $file->store("tickets/{$ticket->id}", 'public');
-
-        $attachment = $ticket->attachments()->create([
-            'user_id' => $request->user()->id,
-            'filename' => $file->getClientOriginalName(),
-            'path' => $path,
-            'mime_type' => $file->getMimeType(),
-            'size' => $file->getSize(),
-        ]);
+        try {
+            $attachment = TicketAttachmentStorageService::storeOnTicket(
+                $request->file('file'),
+                $ticket,
+                $request->user()
+            );
+        } catch (\RuntimeException $e) {
+            return redirect()
+                ->route('tickets.show', $ticket)
+                ->with('error', $e->getMessage());
+        }
 
         $ticket->logActivity(
             TicketActivity::ACTION_ATTACHMENT_ADDED,

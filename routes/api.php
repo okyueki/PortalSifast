@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Api\ApiTicketController;
 use App\Http\Controllers\Api\EmergencyReportController;
+use App\Http\Controllers\Api\EmployeeSalaryController;
+use App\Http\Controllers\Api\EmployeeSalaryImportController;
+use App\Http\Controllers\Api\FcmController;
 use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\OfficerAuthController;
 use App\Http\Controllers\Api\OfficerLocationController;
@@ -74,6 +77,15 @@ Route::middleware('auth:sanctum')->group(function () {
             TicketStatus::active()->ordered()->get(['id', 'name', 'slug', 'color', 'order', 'is_closed'])
         ));
 
+        // FCM device token (untuk push notification panic button / emergency)
+        Route::post('/fcm/register', [FcmController::class, 'register']);
+
+        // Payroll / Gaji Karyawan (import dari CSV)
+        Route::post('/payroll/import', EmployeeSalaryImportController::class);
+        // Payroll / Gaji Karyawan (untuk pegawai lihat gaji sendiri)
+        Route::get('/payroll', [EmployeeSalaryController::class, 'index']);
+        Route::get('/payroll/{employeeSalary}', [EmployeeSalaryController::class, 'show']);
+
         // Emergency / Panic Button
         Route::prefix('emergency')->group(function () {
             Route::post('/reports', [EmergencyReportController::class, 'store']);
@@ -83,11 +95,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::patch('/reports/{emergency_report}/cancel', [EmergencyReportController::class, 'cancel']);
             Route::post('/reports/{emergency_report}/photo', [EmergencyReportController::class, 'uploadPhoto']);
             Route::get('/operator/reports', [EmergencyReportController::class, 'operatorIndex']);
+            Route::get('/operator/reports/{emergency_report}', [EmergencyReportController::class, 'operatorShow']);
             Route::patch('/operator/reports/{emergency_report}/respond', [EmergencyReportController::class, 'operatorRespond']);
         });
 
         // Officer Tracking (petugas emergency) — butuh token dari login officer
-        Route::prefix('officer')->middleware('officer')->group(function () {
+        // Throttle 20/min agar kirim lokasi tiap ~5 detik tidak kena block
+        Route::prefix('officer')->middleware(['officer', 'throttle:20,1'])->group(function () {
             Route::post('/location', [OfficerLocationController::class, 'store']);
         });
     });

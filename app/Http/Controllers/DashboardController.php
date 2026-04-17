@@ -19,7 +19,7 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        $baseQuery = Ticket::query();
+        $baseQuery = Ticket::query()->published();
 
         if ($user->isPemohon()) {
             $baseQuery->where('requester_id', $user->id);

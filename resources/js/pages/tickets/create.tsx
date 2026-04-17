@@ -1,9 +1,12 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Paperclip, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import ReactSelect, { type SingleValue } from 'react-select';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { InventarisSearchInput } from '@/components/inventaris-search-input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -14,8 +17,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { InventarisSearchInput } from '@/components/inventaris-search-input';
 import { UserSearchInput } from '@/components/user-search-input';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
@@ -36,6 +37,13 @@ type TicketForLink = {
 };
 
 type ProjectOption = { id: number; name: string };
+type RelatedTicketOption = {
+    value: string;
+    label: string;
+    ticketNumber: string;
+    title: string;
+    createdAt: string;
+};
 
 type Props = {
     types: TicketType[];
@@ -58,7 +66,7 @@ export default function TicketCreate({
     projects = [],
     initialProjectId = null,
 }: Props) {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, transform } = useForm({
         ticket_type_id: '',
         ticket_category_id: '',
         ticket_subcategory_id: '',
@@ -71,10 +79,25 @@ export default function TicketCreate({
         requester_id: null as number | null,
         created_at: '' as string,
         project_id: (initialProjectId ?? '') as string | number,
+        is_draft: false,
+        plan_ideas: '',
+        plan_tools: '',
+        budget_estimate: '',
+        budget_notes: '',
+        attachments: [] as File[],
     });
 
     const [filteredCategories, setFilteredCategories] = useState<TicketCategory[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<TicketCategory | null>(null);
+    const relatedTicketOptions: RelatedTicketOption[] = recentTicketsForLink.map((ticket) => ({
+        value: String(ticket.id),
+        label: `${ticket.ticket_number} - ${ticket.title}`,
+        ticketNumber: ticket.ticket_number,
+        title: ticket.title,
+        createdAt: ticket.created_at,
+    }));
+    const selectedRelatedTicketOption =
+        relatedTicketOptions.find((option) => option.value === data.related_ticket_id) ?? null;
 
     // Filter categories based on selected type (null = kategori untuk semua tipe)
     useEffect(() => {
@@ -122,25 +145,43 @@ export default function TicketCreate({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        const hasAttachments = data.attachments.length > 0;
+
+        transform((formData) => {
+            const payload: Record<string, unknown> = {
+                ...formData,
+                ticket_subcategory_id: formData.ticket_subcategory_id === '_none' ? '' : formData.ticket_subcategory_id,
+            };
+            if (formData.related_ticket_id && formData.related_ticket_id !== '_none') {
+                payload.related_ticket_id = parseInt(formData.related_ticket_id);
+            } else {
+                payload.related_ticket_id = null;
+            }
+            payload.asset_no_inventaris = formData.asset_no_inventaris || null;
+            payload.tag_ids = Array.isArray(formData.tag_ids) ? formData.tag_ids : [];
+            payload.created_at = formData.created_at && String(formData.created_at).trim() ? formData.created_at : null;
+            payload.project_id = formData.project_id && formData.project_id !== '_none' ? (typeof formData.project_id === 'number' ? formData.project_id : parseInt(String(formData.project_id), 10)) : null;
+            payload.budget_estimate = String(formData.budget_estimate).trim() !== '' ? parseInt(String(formData.budget_estimate), 10) : null;
+
+            if (hasAttachments) {
+                payload.attachments = formData.attachments;
+            } else {
+                delete payload.attachments;
+            }
+
+            return payload;
+        });
+
         post('/tickets', {
-            transform: (formData) => {
-                const payload: Record<string, unknown> = {
-                    ...formData,
-                    ticket_subcategory_id: formData.ticket_subcategory_id === '_none' ? '' : formData.ticket_subcategory_id,
-                };
-                if (formData.related_ticket_id && formData.related_ticket_id !== '_none') {
-                    payload.related_ticket_id = parseInt(formData.related_ticket_id);
-                } else {
-                    payload.related_ticket_id = null;
-                }
-                payload.asset_no_inventaris = formData.asset_no_inventaris || null;
-                payload.tag_ids = Array.isArray(formData.tag_ids) ? formData.tag_ids : [];
-                payload.created_at = formData.created_at && String(formData.created_at).trim() ? formData.created_at : null;
-                payload.project_id = formData.project_id && formData.project_id !== '_none' ? (typeof formData.project_id === 'number' ? formData.project_id : parseInt(String(formData.project_id), 10)) : null;
-                return payload;
-            },
+            preserveScroll: true,
+            forceFormData: hasAttachments,
         });
     };
+
+    const attachmentFieldErrors = Object.entries(errors)
+        .filter(([key]) => key.startsWith('attachments'))
+        .map(([, message]) => message)
+        .filter(Boolean);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -349,29 +390,27 @@ export default function TicketCreate({
                             <Label htmlFor="related_ticket_id">
                                 Tiket Terkait (opsional)
                             </Label>
-                            <Select
-                                value={data.related_ticket_id}
-                                onValueChange={(v) => setData('related_ticket_id', v)}
-                            >
-                                <SelectTrigger id="related_ticket_id">
-                                    <SelectValue placeholder="Pilih tiket sebelumnya jika masalah berulang..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="_none">Tidak ada</SelectItem>
-                                    {recentTicketsForLink.map((t) => (
-                                        <SelectItem key={t.id} value={String(t.id)}>
-                                            <div className="flex flex-col">
-                                                <span className="font-mono text-sm">
-                                                    {t.ticket_number} - {t.title}
-                                                </span>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {new Date(t.created_at).toLocaleDateString('id-ID')}
-                                                </span>
-                                            </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <ReactSelect<RelatedTicketOption, false>
+                                inputId="related_ticket_id"
+                                value={selectedRelatedTicketOption}
+                                options={relatedTicketOptions}
+                                isClearable
+                                placeholder="Pilih tiket sebelumnya jika masalah berulang..."
+                                noOptionsMessage={() => 'Tidak ada tiket'}
+                                onChange={(option: SingleValue<RelatedTicketOption>) =>
+                                    setData('related_ticket_id', option?.value ?? '')
+                                }
+                                formatOptionLabel={(option) => (
+                                    <div className="flex flex-col">
+                                        <span className="font-mono text-sm">
+                                            {option.ticketNumber} - {option.title}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {new Date(option.createdAt).toLocaleDateString('id-ID')}
+                                        </span>
+                                    </div>
+                                )}
+                            />
                             <p className="text-xs text-muted-foreground">
                                 Pilih jika ini lanjutan/terkait tiket sebelumnya
                                 (masalah yang sama muncul lagi).
@@ -462,10 +501,135 @@ export default function TicketCreate({
                             value={data.description}
                             onChange={(e) => setData('description', e.target.value)}
                             placeholder="Jelaskan detail masalah/permintaan Anda. Sertakan informasi seperti: kapan terjadi, apa yang sudah dicoba, lokasi perangkat, dll."
-                            rows={5}
+                            rows={8}
+                            className="min-h-40"
                             maxLength={10000}
                         />
                         <InputError message={errors.description} />
+                    </div>
+
+                    {/* Lampiran */}
+                    <div className="grid gap-2">
+                        <Label htmlFor="attachments" className="flex items-center gap-2">
+                            <Paperclip className="h-4 w-4" />
+                            Lampiran foto / dokumen (opsional)
+                        </Label>
+                        <Input
+                            id="attachments"
+                            type="file"
+                            multiple
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,image/jpeg,image/png,image/gif,image/webp,.zip"
+                            className="cursor-pointer"
+                            onChange={(e) => {
+                                const picked = e.target.files ? Array.from(e.target.files) : [];
+                                const next = [...data.attachments];
+                                for (const file of picked) {
+                                    if (next.length >= 10) {
+                                        break;
+                                    }
+                                    next.push(file);
+                                }
+                                setData('attachments', next);
+                                e.target.value = '';
+                            }}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Maksimal 10 file, tiap file maks. 10 MB. PDF, Word, Excel, gambar (JPG, PNG, GIF, WebP), atau ZIP.
+                        </p>
+                        {data.attachments.length > 0 && (
+                            <ul className="space-y-2 rounded-md border p-2 text-sm">
+                                {data.attachments.map((file, idx) => (
+                                    <li
+                                        key={`${file.name}-${file.size}-${idx}`}
+                                        className="flex items-center justify-between gap-2"
+                                    >
+                                        <span className="truncate text-muted-foreground">{file.name}</span>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 shrink-0"
+                                            onClick={() =>
+                                                setData(
+                                                    'attachments',
+                                                    data.attachments.filter((_, i) => i !== idx)
+                                                )
+                                            }
+                                        >
+                                            <X className="h-4 w-4" />
+                                            <span className="sr-only">Hapus {file.name}</span>
+                                        </Button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        {attachmentFieldErrors.length > 0 && (
+                            <ul className="text-sm text-destructive space-y-1">
+                                {attachmentFieldErrors.map((msg) => (
+                                    <li key={msg}>{msg}</li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+
+                    {/* Plan Proposal */}
+                    <div className="rounded-lg border p-4 space-y-4">
+                        <div>
+                            <p className="text-sm font-medium">Rencana Usulan (opsional)</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Isi ide, kebutuhan tools, dan estimasi anggaran jika tiket ini butuh perencanaan.
+                            </p>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="plan_ideas">Ide / pendekatan</Label>
+                            <Textarea
+                                id="plan_ideas"
+                                value={data.plan_ideas}
+                                onChange={(e) => setData('plan_ideas', e.target.value)}
+                                placeholder="Contoh: integrasi notifikasi WA, pemecahan tahap implementasi, dll."
+                                rows={4}
+                                maxLength={10000}
+                            />
+                            <InputError message={errors.plan_ideas} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="plan_tools">Tools / kebutuhan</Label>
+                            <Textarea
+                                id="plan_tools"
+                                value={data.plan_tools}
+                                onChange={(e) => setData('plan_tools', e.target.value)}
+                                placeholder="Contoh: server tambahan, lisensi, vendor, kebutuhan SDM."
+                                rows={4}
+                                maxLength={10000}
+                            />
+                            <InputError message={errors.plan_tools} />
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label htmlFor="budget_estimate">Estimasi biaya (Rp)</Label>
+                                <Input
+                                    id="budget_estimate"
+                                    type="number"
+                                    min={0}
+                                    value={data.budget_estimate}
+                                    onChange={(e) => setData('budget_estimate', e.target.value)}
+                                    placeholder="Contoh: 15000000"
+                                />
+                                <InputError message={errors.budget_estimate} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="budget_notes">Catatan anggaran</Label>
+                                <Textarea
+                                    id="budget_notes"
+                                    value={data.budget_notes}
+                                    onChange={(e) => setData('budget_notes', e.target.value)}
+                                    placeholder="Contoh: rentang 10-15 juta tergantung vendor."
+                                    rows={3}
+                                    maxLength={5000}
+                                />
+                                <InputError message={errors.budget_notes} />
+                            </div>
+                        </div>
                     </div>
 
                     {/* Tanggal & waktu lapor (backdate) */}
@@ -499,10 +663,27 @@ export default function TicketCreate({
                         </div>
                     )}
 
+                    <div className="flex items-start gap-3 rounded-lg border p-3">
+                        <Checkbox
+                            id="is_draft"
+                            checked={data.is_draft}
+                            onCheckedChange={(checked) => setData('is_draft', !!checked)}
+                        />
+                        <div className="grid gap-1">
+                            <Label htmlFor="is_draft" className="cursor-pointer">
+                                Simpan sebagai draf (tanpa SLA & notifikasi)
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                                Draf hanya terlihat oleh Anda dan admin. Publikasikan saat sudah siap dikerjakan tim.
+                            </p>
+                            <InputError message={errors.is_draft} />
+                        </div>
+                    </div>
+
                     {/* Submit */}
                     <div className="flex gap-3 pt-4">
                         <Button type="submit" disabled={processing}>
-                            {processing ? 'Membuat...' : 'Buat Tiket'}
+                            {processing ? 'Menyimpan...' : data.is_draft ? 'Simpan Draf' : 'Buat Tiket'}
                         </Button>
                         <Button type="button" variant="outline" asChild>
                             <Link href="/tickets">Batal</Link>

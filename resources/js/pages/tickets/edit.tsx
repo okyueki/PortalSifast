@@ -17,6 +17,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { InventarisSearchInput } from '@/components/inventaris-search-input';
+import { UserSearchInput } from '@/components/user-search-input';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
@@ -39,6 +40,7 @@ type Props = {
     priorities: TicketPriority[];
     statuses: TicketStatus[];
     tags: TicketTag[];
+    canSelectRequester?: boolean;
     canDelete?: boolean;
     projects?: ProjectOption[];
 };
@@ -55,7 +57,7 @@ function getStatusColor(color: string): string {
     return colorMap[color] || colorMap.gray;
 }
 
-export default function TicketEdit({ ticket, types, categories, priorities, statuses, tags = [], canDelete = false, projects = [] }: Props) {
+export default function TicketEdit({ ticket, types, categories, priorities, statuses, tags = [], canSelectRequester = false, canDelete = false, projects = [] }: Props) {
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: dashboard().url },
         { title: 'Tiket', href: '/tickets' },
@@ -73,9 +75,14 @@ export default function TicketEdit({ ticket, types, categories, priorities, stat
         description: ticket.description || '',
         ticket_priority_id: String(ticket.ticket_priority_id),
         ticket_status_id: String(ticket.ticket_status_id),
+        requester_id: ticket.requester_id,
         asset_no_inventaris: ticket.asset_no_inventaris ?? null,
         tag_ids: (ticket.tags ?? []).map((t) => t.id),
         project_id: ticket.project_id ? String(ticket.project_id) : '_none',
+        plan_ideas: ticket.plan_ideas ?? '',
+        plan_tools: ticket.plan_tools ?? '',
+        budget_estimate: ticket.budget_estimate !== null ? String(ticket.budget_estimate) : '',
+        budget_notes: ticket.budget_notes ?? '',
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -85,7 +92,9 @@ export default function TicketEdit({ ticket, types, categories, priorities, stat
                 ...d,
                 asset_no_inventaris: d.asset_no_inventaris || null,
                 tag_ids: Array.isArray(d.tag_ids) ? d.tag_ids : [],
+                requester_id: d.requester_id ?? null,
                 project_id: d.project_id && d.project_id !== '_none' ? parseInt(String(d.project_id), 10) : null,
+                budget_estimate: String(d.budget_estimate).trim() !== '' ? parseInt(String(d.budget_estimate), 10) : null,
             }),
         });
     };
@@ -151,7 +160,7 @@ export default function TicketEdit({ ticket, types, categories, priorities, stat
                             </p>
                         </div>
                         <div>
-                            <Label className="text-muted-foreground">Pemohon</Label>
+                            <Label className="text-muted-foreground">Pemohon Saat Ini</Label>
                             <p className="text-sm mt-1">{ticket.requester.name}</p>
                         </div>
                         <div>
@@ -161,6 +170,24 @@ export default function TicketEdit({ ticket, types, categories, priorities, stat
                     </div>
 
                     <hr />
+
+                    {/* Requester Selection (Admin / Teknisi) */}
+                    {canSelectRequester && (
+                        <div className="grid gap-2">
+                            <Label htmlFor="requester_id">Pemohon</Label>
+                            <UserSearchInput
+                                value={data.requester_id}
+                                onChange={(v) => setData('requester_id', v)}
+                                initialLabel={ticket.requester.name}
+                                placeholder="Cari nama, email, atau NIK pemohon..."
+                                disabled={isClosed}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Pilih pemohon sesuai pengaju aktual dari departemen terkait.
+                            </p>
+                            <InputError message={errors.requester_id} />
+                        </div>
+                    )}
 
                     {/* Title */}
                     <div className="grid gap-2">
@@ -192,6 +219,65 @@ export default function TicketEdit({ ticket, types, categories, priorities, stat
                             disabled={isClosed}
                         />
                         <InputError message={errors.description} />
+                    </div>
+
+                    <div className="rounded-lg border p-4 space-y-4">
+                        <div>
+                            <p className="text-sm font-medium">Rencana Usulan</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Simpan ide, tools, dan anggaran yang dibutuhkan untuk pengerjaan tiket.
+                            </p>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="plan_ideas">Ide / pendekatan</Label>
+                            <Textarea
+                                id="plan_ideas"
+                                value={data.plan_ideas}
+                                onChange={(e) => setData('plan_ideas', e.target.value)}
+                                rows={4}
+                                maxLength={10000}
+                                disabled={isClosed}
+                            />
+                            <InputError message={errors.plan_ideas} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="plan_tools">Tools / kebutuhan</Label>
+                            <Textarea
+                                id="plan_tools"
+                                value={data.plan_tools}
+                                onChange={(e) => setData('plan_tools', e.target.value)}
+                                rows={4}
+                                maxLength={10000}
+                                disabled={isClosed}
+                            />
+                            <InputError message={errors.plan_tools} />
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label htmlFor="budget_estimate">Estimasi biaya (Rp)</Label>
+                                <Input
+                                    id="budget_estimate"
+                                    type="number"
+                                    min={0}
+                                    value={data.budget_estimate}
+                                    onChange={(e) => setData('budget_estimate', e.target.value)}
+                                    disabled={isClosed}
+                                />
+                                <InputError message={errors.budget_estimate} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="budget_notes">Catatan anggaran</Label>
+                                <Textarea
+                                    id="budget_notes"
+                                    value={data.budget_notes}
+                                    onChange={(e) => setData('budget_notes', e.target.value)}
+                                    rows={3}
+                                    maxLength={5000}
+                                    disabled={isClosed}
+                                />
+                                <InputError message={errors.budget_notes} />
+                            </div>
+                        </div>
                     </div>
 
                     {/* Tags */}

@@ -78,7 +78,7 @@ class TicketSettingsController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'ticket_type_id' => 'required|exists:ticket_types,id',
-            'dep_id' => 'required|exists:departemen,dep_id',
+            'dep_id' => 'required|exists:dbsimrs.departemen,dep_id',
             'is_development' => 'boolean',
         ]);
 
@@ -92,7 +92,7 @@ class TicketSettingsController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'ticket_type_id' => 'required|exists:ticket_types,id',
-            'dep_id' => 'required|exists:departemen,dep_id',
+            'dep_id' => 'required|exists:dbsimrs.departemen,dep_id',
             'is_development' => 'boolean',
             'is_active' => 'boolean',
         ]);

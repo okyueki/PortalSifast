@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentReportController;
 use App\Http\Controllers\DepartmentReportPrintController;
 use App\Http\Controllers\EmergencyReportWebController;
+use App\Http\Controllers\EmployeeSalaryWebImportController;
 use App\Http\Controllers\InventarisBarangController;
 use App\Http\Controllers\InventarisController;
 use App\Http\Controllers\PegawaiController;
@@ -93,6 +94,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('tickets/{ticket}/resolve', [TicketController::class, 'resolve'])->name('tickets.resolve');
     Route::post('tickets/{ticket}/confirm', [TicketController::class, 'confirm'])->name('tickets.confirm');
     Route::post('tickets/{ticket}/complain', [TicketController::class, 'complain'])->name('tickets.complain');
+    Route::post('tickets/{ticket}/publish', [TicketController::class, 'publish'])->name('tickets.publish');
 
     // Ticket issues
     Route::post('tickets/{ticket}/issues', [TicketIssueController::class, 'store'])->name('tickets.issues.store');
@@ -140,6 +142,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('chat', [ChatController::class, 'store'])->name('chat.store');
     Route::get('chat/{conversation}', [ChatController::class, 'show'])->name('chat.show');
     Route::post('chat/{conversation}/messages', [ChatController::class, 'storeMessage'])->name('chat.messages.store');
+
+    // Payroll / Gaji Karyawan
+    Route::get('payroll', [EmployeeSalaryWebImportController::class, 'index'])->name('payroll.index');
+    Route::get('payroll/dashboard', [EmployeeSalaryWebImportController::class, 'dashboard'])->name('payroll.dashboard');
+    Route::get('payroll/import', [EmployeeSalaryWebImportController::class, 'create'])->name('payroll.import');
+    Route::post('payroll/import', [EmployeeSalaryWebImportController::class, 'store'])->name('payroll.import.store');
+    Route::get('payroll/import-history', [EmployeeSalaryWebImportController::class, 'importHistory'])->name('payroll.import-history');
+    Route::get('payroll/audit-logs', [EmployeeSalaryWebImportController::class, 'auditLogs'])->name('payroll.audit-logs');
+    Route::post('payroll/import/{payrollImport}/rollback', [EmployeeSalaryWebImportController::class, 'rollbackImport'])->name('payroll.rollback');
+    Route::post('payroll/import/{payrollImport}/approve', [EmployeeSalaryWebImportController::class, 'approveImport'])->name('payroll.approve');
+    Route::post('payroll/import/{payrollImport}/reject', [EmployeeSalaryWebImportController::class, 'rejectImport'])->name('payroll.reject');
+    Route::post('payroll/bulk-delete', [EmployeeSalaryWebImportController::class, 'bulkDestroy'])->name('payroll.bulk-destroy');
+    Route::post('payroll/bulk-email', [EmployeeSalaryWebImportController::class, 'sendBulkEmail'])->name('payroll.bulk-email');
+    Route::post('payroll/{employeeSalary}/send-email', [EmployeeSalaryWebImportController::class, 'sendEmail'])->name('payroll.send-email');
+    Route::get('payroll/employee/{nik}', [EmployeeSalaryWebImportController::class, 'employeeHistory'])->name('payroll.employee-history');
+    Route::get('payroll/{employeeSalary}', [EmployeeSalaryWebImportController::class, 'show'])->name('payroll.show');
+    Route::get('payroll/{employeeSalary}/print', [EmployeeSalaryWebImportController::class, 'print'])->name('payroll.print');
+    Route::patch('payroll/{employeeSalary}', [EmployeeSalaryWebImportController::class, 'update'])->name('payroll.update');
+    Route::delete('payroll/{employeeSalary}', [EmployeeSalaryWebImportController::class, 'destroy'])->name('payroll.destroy');
 });
 
 require __DIR__.'/settings.php';

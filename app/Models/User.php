@@ -134,6 +134,17 @@ class User extends Authenticatable
     }
 
     /**
+     * Akun integrasi API (token service / kepegawaian). Tidak memiliki NIK pegawai di profil;
+     * endpoint payroll harus mengirim ?nik= atau header X-Sifast-Nik.
+     */
+    public function isPayrollServiceIntegrationAccount(): bool
+    {
+        return str_contains($this->email ?? '', 'api-service@')
+            || str_contains($this->email ?? '', 'service@')
+            || $this->role === 'service';
+    }
+
+    /**
      * Cek apakah user bisa mengakses tiket departemen tertentu
      */
     public function canAccessDepartment(string $depId): bool
@@ -163,6 +174,11 @@ class User extends Authenticatable
         return $query->where('role', 'staff')->whereIn('dep_id', self::OFFICER_DEP_IDS);
     }
 
+    public function fcmDeviceTokens(): HasMany
+    {
+        return $this->hasMany(FcmDeviceToken::class);
+    }
+
     public function officerLocations(): HasMany
     {
         return $this->hasMany(OfficerLocation::class, 'officer_id');
@@ -185,6 +201,13 @@ class User extends Authenticatable
     public function workNotes(): HasMany
     {
         return $this->hasMany(WorkNote::class);
+    }
+
+    // ==================== PAYROLL ====================
+
+    public function employeeSalaries(): HasMany
+    {
+        return $this->hasMany(EmployeeSalary::class);
     }
 
     // ==================== TELEGRAM ====================

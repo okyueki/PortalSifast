@@ -165,9 +165,17 @@ export type Ticket = {
     asset_id?: number | null; // deprecated
     title: string;
     description: string | null;
+    is_draft: boolean;
+    published_at: string | null;
+    plan_ideas: string | null;
+    plan_tools: string | null;
+    budget_estimate: number | null;
+    budget_notes: string | null;
     first_response_at: string | null;
     resolved_at: string | null;
     closed_at: string | null;
+    /** Durasi dibuat → ditutup, diisi server (teks ID) */
+    resolution_duration_label?: string | null;
     response_due_at: string | null;
     resolution_due_at: string | null;
     due_date: string | null;
@@ -190,6 +198,8 @@ export type Ticket = {
         ruang?: {nama_ruang: string};
     } | null;
     tags?: TicketTag[];
+    /** Masalah terbuka (sub-tiket issue); diisi di daftar tiket untuk indikator cepat */
+    open_issues?: TicketIssue[];
     comments?: TicketComment[];
     attachments?: TicketAttachment[];
     activities?: TicketActivity[];
@@ -232,4 +242,6 @@ export type TicketFilters = {
     include_closed?: string;
     /** Filter by project/rencana (project_id) */
     project?: string;
+    /** 1 = tampilkan draf; default = tiket aktif */
+    draft?: string;
 };

@@ -2,6 +2,8 @@
 
 API untuk membuat dan melihat tiket dari aplikasi kepegawaian tanpa user perlu login ke PortalSifast.
 
+**Standar integrasi (token service, NIK, dokumen mana yang di-update bersamaan):** [STANDARD-API-INTEGRASI-KEPEGAWAIAN.md](./STANDARD-API-INTEGRASI-KEPEGAWAIAN.md).
+
 ## Autentikasi
 
 Semua endpoint memerlukan **Bearer Token** (Laravel Sanctum) di header:
@@ -105,6 +107,30 @@ const res = await fetch(`${API_URL}/user?nik=${encodeURIComponent(nik)}`, {
 const { data } = await res.json();
 // data.name, data.email, data.dep_id, dll. untuk tampilan "Login sebagai: {data.name}"
 ```
+
+---
+
+## Payroll (slip gaji) — **cara NIK sama persis**
+
+Gunakan **token yang sama** dan **NIK yang sama** seperti tiket. Jangan panggil payroll tanpa `nik`.
+
+**Daftar gaji:**
+
+`GET /api/sifast/payroll?nik={nik}&page=1&per_page=12`  
+Header: `Authorization: Bearer {token}` (sama dengan `VITE_PORTALSIFAST_API_TOKEN`).
+
+Contoh:
+
+```js
+const nik = getNikFromKepegawaianLogin(); // variabel yang sama dipakai untuk tiket
+const url = `${API_URL}/sifast/payroll?${new URLSearchParams({ nik, page: '1', per_page: '12' })}`;
+const res = await fetch(url, {
+  headers: { Authorization: `Bearer ${API_TOKEN}`, Accept: 'application/json' },
+});
+```
+
+Format response, filter `period`, detail per ID, dan import CSV ada di **[api-documentation.md](./api-documentation.md)** (bagian Payroll).  
+**Aturan emas:** satu pola identitas untuk seluruh modul di app kepegawaian — **token service + `nik` di query** (atau header `X-Sifast-Nik` bila tidak ingin NIK di URL).
 
 ---
 
@@ -677,7 +703,7 @@ curl -X POST http://192.168.10.57:8000/api/tickets \
 
 1. **Dua Versi Endpoint:** Gunakan `/api/sifast/` untuk frontend dengan pagination, atau `/api/tickets/` untuk integrasi sederhana.
 2. **Auto-create User:** Sistem akan otomatis membuat User di PortalSifast jika NIK belum terdaftar (ambil data dari Pegawai SIMRS). Password dibuat sama dengan email.
-3. **NIK sebagai Identifier:** Semua request harus bawa NIK untuk mengidentifikasi pelapor. NIK harus sesuai dengan `nik` di tabel `pegawai` (SIMRS).
+3. **NIK sebagai Identifier:** Untuk tiket **dan** payroll dari app kepegawaian, pakai **satu pola**: token service + **`nik` di query** (sama variabel NIK dari session). Detail payroll: [api-documentation.md](./api-documentation.md). NIK harus sesuai `pegawai.nik` di SIMRS.
 4. **Notifikasi:** Setelah tiket dibuat, staff di departemen terkait akan mendapat notifikasi email (jika email dikonfigurasi).
 5. **SLA:** SLA otomatis dihitung berdasarkan tipe, prioritas, dan kategori tiket.
 6. **Komentar:** Pelapor bisa menambah komentar via API. Hanya requester tiket yang boleh komentar; komentar via API selalu publik.
@@ -716,6 +742,7 @@ API mendukung nama field alternatif (bahasa Indonesia):
 | POST | `/api/sifast/ticket` | Buat tiket baru |
 | GET | `/api/sifast/ticket/{id}?nik=xxx` | Detail tiket |
 | POST | `/api/sifast/ticket/{id}/comments` | Tambah komentar |
+| GET | `/api/sifast/payroll?nik=xxx&page=1` | Daftar gaji (sama token + NIK) — lihat [api-documentation.md](./api-documentation.md) |
 
 | Metode | Endpoint (Legacy) | Keterangan |
 |--------|-------------------|------------|

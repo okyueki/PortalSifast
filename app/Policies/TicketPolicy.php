@@ -24,6 +24,10 @@ class TicketPolicy
             return true;
         }
 
+        if ($ticket->isDraft()) {
+            return $this->canAccessDraft($user, $ticket);
+        }
+
         if ($user->isStaff()) {
             return $ticket->dep_id === $user->dep_id
                 || $ticket->assignee_id === $user->id
@@ -53,6 +57,22 @@ class TicketPolicy
     public function update(User $user, Ticket $ticket): bool
     {
         return $this->canEdit($user, $ticket);
+    }
+
+    /**
+     * Determine whether the user can publish draft ticket.
+     */
+    public function publish(User $user, Ticket $ticket): bool
+    {
+        if (! $ticket->isDraft()) {
+            return false;
+        }
+
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        return $ticket->requester_id === $user->id;
     }
 
     /**
@@ -157,6 +177,30 @@ class TicketPolicy
             return true;
         }
 
+        if ($ticket->isDraft()) {
+            return $this->canAccessDraft($user, $ticket);
+        }
+
         return $user->isStaff() && ($ticket->dep_id === $user->dep_id || $ticket->assignee_id === $user->id);
+    }
+
+    /**
+     * Draf: pemohon (requester) selalu bisa; staff mengikuti akses departemen/tugas yang sama
+     * seperti tiket terbit agar teknisi yang membuat draf atas nama pemohon tetap bisa membuka halaman.
+     */
+    private function canAccessDraft(User $user, Ticket $ticket): bool
+    {
+        if ($ticket->requester_id === $user->id) {
+            return true;
+        }
+
+        if ($user->isStaff()) {
+            return $ticket->dep_id === $user->dep_id
+                || $ticket->assignee_id === $user->id
+                || $ticket->collaborators()->where('user_id', $user->id)->exists()
+                || ($ticket->ticket_group_id && $ticket->group?->members()->where('user_id', $user->id)->exists());
+        }
+
+        return false;
     }
 }

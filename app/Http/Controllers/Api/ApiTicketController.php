@@ -16,6 +16,8 @@ use App\Models\TicketType;
 use App\Models\User;
 use App\Notifications\TicketCommentNotification;
 use App\Notifications\TicketCreatedNotification;
+use App\Services\SyncUserSimrsNikFromEmailService;
+use App\Services\TicketTelegramGroupNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -89,6 +91,8 @@ class ApiTicketController extends Controller
         foreach ($staffInDept as $staff) {
             $staff->notify(new TicketCreatedNotification($ticket));
         }
+
+        TicketTelegramGroupNotifier::notifyNewTicket($ticket);
 
         $ticket->load(['type', 'category', 'priority', 'status', 'requester']);
 
@@ -332,6 +336,8 @@ class ApiTicketController extends Controller
             $recipient->notify(new TicketCommentNotification($ticket, $comment));
         }
 
+        TicketTelegramGroupNotifier::notifyTicketComment($ticket, $comment);
+
         return response()->json([
             'success' => true,
             'message' => 'Komentar berhasil ditambahkan.',
@@ -344,21 +350,50 @@ class ApiTicketController extends Controller
     }
 
     /**
-     * Get data user (nama, email, dll.) berdasarkan NIK.
-     * Untuk kepegawaian: setelah user login dengan NIK di aplikasi mereka,
-     * panggil endpoint ini dengan Bearer token + query nik untuk dapat nama/dep dll.
-     * Jika user belum ada di PortalSifast, akan auto-create dari data Pegawai (SIMRS).
+     * Get data user yang login (current user) atau user by NIK.
+     * - GET /api/user (tanpa query) → mengembalikan user yang sedang login (Bearer token), termasuk simrs_nik.
+     * - GET /api/user?nik=xxx → mengembalikan user by NIK (untuk kepegawaian); auto-create dari SIMRS jika belum ada.
      */
     public function userByNik(Request $request): JsonResponse
     {
+        $user = $request->user();
+
+        // Tanpa param nik = return current user (user yang login)
+        if (! $request->filled('nik')) {
+            if (! $user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthenticated.',
+                ], 401);
+            }
+
+            if (blank($user->simrs_nik) && ! $user->isPayrollServiceIntegrationAccount()) {
+                app(SyncUserSimrsNikFromEmailService::class)($user);
+                $user->refresh();
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'simrs_nik' => $user->simrs_nik,
+                    'phone' => $user->phone,
+                    'dep_id' => $user->dep_id,
+                    'role' => $user->role,
+                ],
+            ]);
+        }
+
+        // Dengan param nik = lookup/create user by NIK (perilaku lama)
         $request->validate([
             'nik' => ['required', 'string', 'max:50'],
         ]);
-
         $nik = $request->input('nik');
-        $user = $this->findOrCreateUserByNik($nik);
+        $userByNik = $this->findOrCreateUserByNik($nik);
 
-        if (! $user) {
+        if (! $userByNik) {
             return response()->json([
                 'success' => false,
                 'message' => 'Pegawai dengan NIK tersebut tidak ditemukan di SIMRS atau belum terdaftar.',
@@ -368,13 +403,13 @@ class ApiTicketController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'simrs_nik' => $user->simrs_nik,
-                'phone' => $user->phone,
-                'dep_id' => $user->dep_id,
-                'role' => $user->role,
+                'id' => $userByNik->id,
+                'name' => $userByNik->name,
+                'email' => $userByNik->email,
+                'simrs_nik' => $userByNik->simrs_nik,
+                'phone' => $userByNik->phone,
+                'dep_id' => $userByNik->dep_id,
+                'role' => $userByNik->role,
             ],
         ]);
     }

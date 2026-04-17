@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Plus, Filter, X, Download, Upload, Ticket, MoreHorizontal, Pencil, Trash2, FolderKanban } from 'lucide-react';
+import { Search, Plus, Filter, X, Download, Upload, Ticket, MoreHorizontal, Pencil, Trash2, FolderKanban, ChartNoAxesColumn } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import {
@@ -79,14 +79,22 @@ function getStatusColor(color: string): string {
     return colorMap[color] || colorMap.gray;
 }
 
-function formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
+function formatTicketTimestampParts(iso: string | null): { date: string; time: string } | null {
+    if (!iso) {
+        return null;
+    }
+    const d = new Date(iso);
+    return {
+        date: d.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+        }),
+        time: d.toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+        }),
+    };
 }
 
 export default function TicketsIndex({
@@ -112,7 +120,8 @@ export default function TicketsIndex({
             filters.project ||
             filters.created_from ||
             filters.created_to ||
-            filters.include_closed
+            filters.include_closed ||
+            filters.draft
         )
     );
     const [deleteTicketId, setDeleteTicketId] = useState<number | null>(null);
@@ -149,10 +158,12 @@ export default function TicketsIndex({
         filters.subcategory ||
         filters.created_from ||
         filters.created_to ||
-        filters.include_closed
+        filters.include_closed ||
+        filters.draft
     );
 
     const includeClosed = filters.include_closed === '1' || filters.include_closed === 'true';
+    const isDraftMode = filters.draft === '1' || filters.draft === 'true';
 
     const selectedCategory = filters.category
         ? categories.find((c) => c.id === parseInt(filters.category!, 10))
@@ -167,9 +178,21 @@ export default function TicketsIndex({
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <Heading
                         title="Daftar Tiket"
-                        description="Kelola semua tiket permintaan dan insiden"
+                        description={isDraftMode ? 'Kelola draf tiket sebelum dipublikasikan' : 'Kelola semua tiket permintaan dan insiden'}
                     />
                     <div className="flex gap-2">
+                        <Button
+                            variant={isDraftMode ? 'outline' : 'secondary'}
+                            onClick={() => applyFilters({ draft: isDraftMode ? undefined : '1', include_closed: undefined })}
+                        >
+                            {isDraftMode ? 'Lihat Tiket Aktif' : 'Lihat Draf'}
+                        </Button>
+                        <Button variant="outline" asChild>
+                            <Link href="/reports">
+                                <ChartNoAxesColumn className="mr-2 h-4 w-4" />
+                                Laporan
+                            </Link>
+                        </Button>
                         {canExport && (
                             <>
                                 <Button variant="outline" asChild>
@@ -239,21 +262,23 @@ export default function TicketsIndex({
                 {/* Filter Panel */}
                 {showFilters && (
                     <div className="flex flex-wrap gap-3 rounded-lg border bg-card p-4">
-                        <div className="flex w-full items-center gap-2 sm:w-auto">
-                            <Checkbox
-                                id="include_closed"
-                                checked={includeClosed}
-                                onCheckedChange={(checked) =>
-                                    applyFilters({ include_closed: checked ? '1' : undefined })
-                                }
-                            />
-                            <label
-                                htmlFor="include_closed"
-                                className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                                Tampilkan tiket ditutup
-                            </label>
-                        </div>
+                        {!isDraftMode && (
+                            <div className="flex w-full items-center gap-2 sm:w-auto">
+                                <Checkbox
+                                    id="include_closed"
+                                    checked={includeClosed}
+                                    onCheckedChange={(checked) =>
+                                        applyFilters({ include_closed: checked ? '1' : undefined })
+                                    }
+                                />
+                                <label
+                                    htmlFor="include_closed"
+                                    className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                    Tampilkan tiket ditutup
+                                </label>
+                            </div>
+                        )}
                         <div className="min-w-[150px]">
                             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                                 Status
@@ -462,18 +487,26 @@ export default function TicketsIndex({
                                     <th className="px-4 py-3 font-medium">Judul</th>
                                     <th className="px-4 py-3 font-medium">Prioritas</th>
                                     <th className="px-4 py-3 font-medium">Status</th>
+                                    <th className="px-4 py-3 font-medium min-w-[140px]">Masalah</th>
                                     <th className="px-4 py-3 font-medium">Rencana</th>
                                     <th className="px-4 py-3 font-medium">Pemohon</th>
                                     <th className="px-4 py-3 font-medium">Unit</th>
                                     <th className="px-4 py-3 font-medium">Petugas</th>
-                                    <th className="px-4 py-3 font-medium">Dibuat</th>
+                                    <th className="px-4 py-3 font-medium whitespace-nowrap">Dibuat</th>
+                                    <th className="px-4 py-3 font-medium whitespace-nowrap">Ditutup</th>
+                                    <th
+                                        className="px-4 py-3 font-medium min-w-[120px]"
+                                        title="Lama dari waktu tiket dibuat sampai ditutup (closed_at)"
+                                    >
+                                        Lama penyelesaian
+                                    </th>
                                     {(canExport || canDelete) && <th className="px-4 py-3 font-medium w-12"></th>}
                                 </tr>
                             </thead>
                             <tbody>
                                 {tickets.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={(canExport || canDelete) ? 10 : 9} className="p-0">
+                                        <td colSpan={(canExport || canDelete) ? 13 : 12} className="p-0">
                                             <EmptyState
                                                 icon={<Ticket className="size-7" />}
                                                 title={
@@ -508,9 +541,16 @@ export default function TicketsIndex({
                                             onClick={() => router.visit(`/tickets/${ticket.id}`)}
                                         >
                                             <td className="px-4 py-3">
-                                                <span className="font-mono text-xs font-medium text-primary">
-                                                    {ticket.ticket_number}
-                                                </span>
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="font-mono text-xs font-medium text-primary">
+                                                        {ticket.ticket_number}
+                                                    </span>
+                                                    {ticket.is_draft && (
+                                                        <Badge variant="outline" className="w-fit text-[10px]">
+                                                            Draf
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="max-w-[300px]">
@@ -558,6 +598,34 @@ export default function TicketsIndex({
                                                     {ticket.status.name}
                                                 </Badge>
                                             </td>
+                                            <td className="px-4 py-3 align-top text-muted-foreground">
+                                                {(() => {
+                                                    const open = ticket.open_issues ?? [];
+                                                    if (open.length === 0) {
+                                                        return <span className="text-muted-foreground/70">–</span>;
+                                                    }
+                                                    const titles = open.map((i) => i.title).join('\n');
+                                                    return (
+                                                        <div className="max-w-[200px]">
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="border-amber-500/50 bg-amber-500/10 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200"
+                                                            >
+                                                                {open.length} terbuka
+                                                            </Badge>
+                                                            <p
+                                                                className="mt-1 text-xs leading-snug line-clamp-2"
+                                                                title={titles}
+                                                            >
+                                                                {open[0].title}
+                                                                {open.length > 1
+                                                                    ? ` (+${open.length - 1} lainnya)`
+                                                                    : ''}
+                                                            </p>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </td>
                                             <td className="px-4 py-3 text-muted-foreground">
                                                 {ticket.project ? (
                                                     <Link
@@ -584,8 +652,53 @@ export default function TicketsIndex({
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-3 text-muted-foreground text-xs">
-                                                {formatDate(ticket.created_at)}
+                                            <td className="px-4 py-3 text-muted-foreground text-xs align-top">
+                                                {(() => {
+                                                    const parts = formatTicketTimestampParts(ticket.created_at);
+                                                    return parts ? (
+                                                        <div>
+                                                            <div>{parts.date}</div>
+                                                            <div className="font-mono text-[11px] text-muted-foreground/90">
+                                                                {parts.time}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        '–'
+                                                    );
+                                                })()}
+                                            </td>
+                                            <td className="px-4 py-3 text-muted-foreground text-xs align-top">
+                                                {(() => {
+                                                    const parts = formatTicketTimestampParts(
+                                                        ticket.closed_at ?? null
+                                                    );
+                                                    return parts ? (
+                                                        <div>
+                                                            <div>{parts.date}</div>
+                                                            <div className="font-mono text-[11px] text-muted-foreground/90">
+                                                                {parts.time}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-muted-foreground/60">–</span>
+                                                    );
+                                                })()}
+                                            </td>
+                                            <td
+                                                className="px-4 py-3 text-muted-foreground text-xs align-top max-w-[140px]"
+                                                title={
+                                                    ticket.resolution_duration_label
+                                                        ? 'Dari waktu dibuat hingga ditutup'
+                                                        : 'Hanya dihitung jika tiket sudah punya waktu tutup'
+                                                }
+                                            >
+                                                {ticket.resolution_duration_label ? (
+                                                    <span className="font-medium text-foreground/90">
+                                                        {ticket.resolution_duration_label}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted-foreground/60">–</span>
+                                                )}
                                             </td>
                                             {(canExport || canDelete) && (
                                                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>

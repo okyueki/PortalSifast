@@ -26,6 +26,7 @@ class SlaReportController extends Controller
         $to = Carbon::parse($monthTo.'-01')->endOfMonth()->endOfDay();
 
         $baseQuery = Ticket::query()
+            ->published()
             ->whereBetween('tickets.created_at', [$from, $to])
             ->where(function ($q) {
                 $q->whereNotNull('response_due_at')

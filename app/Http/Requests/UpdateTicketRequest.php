@@ -14,20 +14,11 @@ class UpdateTicketRequest extends FormRequest
     {
         $user = $this->user();
         $ticket = $this->route('ticket');
-
-        // Admin bisa update semua tiket
-        if ($user->isAdmin()) {
-            return true;
+        if (! $user || ! $ticket) {
+            return false;
         }
 
-        // Staff bisa update tiket di departemennya atau yang ditugaskan ke dia
-        if ($user->isStaff()) {
-            return $ticket->dep_id === $user->dep_id
-                || $ticket->assignee_id === $user->id
-                || $ticket->group?->members()->where('user_id', $user->id)->exists();
-        }
-
-        return false;
+        return $user->can('update', $ticket);
     }
 
     /**
@@ -40,6 +31,7 @@ class UpdateTicketRequest extends FormRequest
         return [
             'ticket_status_id' => ['sometimes', 'integer', Rule::exists('ticket_statuses', 'id')->where('is_active', true)],
             'ticket_priority_id' => ['sometimes', 'integer', Rule::exists('ticket_priorities', 'id')->where('is_active', true)],
+            'requester_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
             'assignee_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')->where('role', 'staff')],
             'ticket_group_id' => ['sometimes', 'nullable', 'integer', Rule::exists('ticket_groups', 'id')],
             'title' => ['sometimes', 'string', 'max:255'],
@@ -49,6 +41,10 @@ class UpdateTicketRequest extends FormRequest
             'tag_ids' => ['sometimes', 'nullable', 'array'],
             'tag_ids.*' => ['integer', Rule::exists('ticket_tags', 'id')->where('is_active', true)],
             'project_id' => ['sometimes', 'nullable', 'integer', Rule::exists('projects', 'id')],
+            'plan_ideas' => ['sometimes', 'nullable', 'string', 'max:10000'],
+            'plan_tools' => ['sometimes', 'nullable', 'string', 'max:10000'],
+            'budget_estimate' => ['sometimes', 'nullable', 'integer', 'min:0'],
+            'budget_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
         ];
     }
 
@@ -62,6 +58,7 @@ class UpdateTicketRequest extends FormRequest
         return [
             'ticket_status_id.exists' => 'Status tiket tidak valid.',
             'ticket_priority_id.exists' => 'Prioritas tiket tidak valid.',
+            'requester_id.exists' => 'Pemohon yang dipilih tidak valid.',
             'assignee_id.exists' => 'User yang ditugaskan tidak valid atau bukan staff.',
             'title.max' => 'Judul tiket maksimal 255 karakter.',
             'description.max' => 'Deskripsi tiket maksimal 10.000 karakter.',
@@ -80,6 +77,7 @@ class UpdateTicketRequest extends FormRequest
         return [
             'ticket_status_id' => 'status tiket',
             'ticket_priority_id' => 'prioritas tiket',
+            'requester_id' => 'pemohon',
             'assignee_id' => 'petugas',
             'title' => 'judul',
             'description' => 'deskripsi',

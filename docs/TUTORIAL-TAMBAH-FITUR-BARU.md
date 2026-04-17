@@ -298,6 +298,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 php artisan route:list --path=announcements
 ```
 
+### API untuk app kepegawaian (`routes/api.php`)
+
+Jika menambah endpoint di `api.php` (terutama prefix **`sifast`**) untuk konsumsi aplikasi kepegawaian, ikuti **[STANDARD-API-INTEGRASI-KEPEGAWAIAN.md](./STANDARD-API-INTEGRASI-KEPEGAWAIAN.md)** — token service vs NIK, validasi 422, dan **tiga dokumen** yang harus diselaraskan: `API-TICKETING.md`, `api-documentation.md`, `api-sifast.md`.
+
 ---
 
 ## Step 5: Buat Halaman Frontend (React)

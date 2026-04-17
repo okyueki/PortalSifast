@@ -22,7 +22,7 @@ import {
     AlertCircle,
     ChevronDown,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import {
     Collapsible,
     CollapsibleContent,
@@ -72,6 +72,7 @@ type Props = {
     canManageCollaborators?: boolean;
     canManageVendorCosts?: boolean;
     canResolveIssue?: boolean;
+    canPublish?: boolean;
 };
 
 function getPriorityColor(color: string): string {
@@ -451,9 +452,10 @@ export default function TicketShow({
     canManageCollaborators = false,
     canManageVendorCosts = false,
     canResolveIssue = false,
+    canPublish = false,
 }: Props) {
     const { flash, auth } = usePage<{
-        flash: { success?: string };
+        flash: { success?: string; error?: string };
         auth: { user: AuthUser };
     }>().props;
     const user = auth.user;
@@ -488,11 +490,34 @@ export default function TicketShow({
         is_resolution: false,
     });
 
+    const commentBodyRef = useRef<HTMLTextAreaElement | null>(null);
+
+    const syncCommentTextareaHeight = useCallback(() => {
+        const el = commentBodyRef.current;
+        if (!el) {
+            return;
+        }
+        const minPx = 176;
+        const maxPx = typeof window !== 'undefined' ? Math.min(Math.round(window.innerHeight * 0.5), 440) : 440;
+        el.style.height = 'auto';
+        const scrollH = el.scrollHeight;
+        const next = Math.min(Math.max(scrollH, minPx), maxPx);
+        el.style.height = `${next}px`;
+        el.style.overflowY = scrollH > maxPx ? 'auto' : 'hidden';
+    }, []);
+
+    useLayoutEffect(() => {
+        syncCommentTextareaHeight();
+    }, [commentForm.data.body, syncCommentTextareaHeight]);
+
     const handleCommentSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         commentForm.post(`/tickets/${ticket.id}/comments`, {
             preserveScroll: true,
-            onSuccess: () => commentForm.reset(),
+            onSuccess: () => {
+                commentForm.reset();
+                queueMicrotask(() => syncCommentTextareaHeight());
+            },
         });
     };
 
@@ -612,6 +637,11 @@ export default function TicketShow({
                                 <Badge variant="outline" className={getPriorityColor(ticket.priority.color)}>
                                     {ticket.priority.name}
                                 </Badge>
+                                {ticket.is_draft && (
+                                    <Badge variant="outline">
+                                        Draf
+                                    </Badge>
+                                )}
                                 {isOverdue && (
                                     <Badge variant="destructive" className="gap-1">
                                         <AlertTriangle className="h-3 w-3" />
@@ -645,6 +675,17 @@ export default function TicketShow({
                             <Button variant="outline" onClick={handleAssignToSelf}>
                                 <UserPlus className="mr-2 h-4 w-4" />
                                 Ambil Tiket
+                            </Button>
+                        )}
+                        {canPublish && (
+                            <Button
+                                onClick={() => {
+                                    if (confirm('Publikasikan draf ini sebagai tiket aktif? SLA dan notifikasi akan mulai berjalan.')) {
+                                        router.post(`/tickets/${ticket.id}/publish`, {}, { preserveScroll: true });
+                                    }
+                                }}
+                            >
+                                Publikasikan Draf
                             </Button>
                         )}
                         {canConfirm && (
@@ -719,6 +760,11 @@ export default function TicketShow({
                         {flash.success}
                     </p>
                 )}
+                {flash?.error && (
+                    <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+                        {flash.error}
+                    </p>
+                )}
 
                 <div className="grid gap-4 lg:grid-cols-3">
                     {/* Main Content */}
@@ -741,6 +787,39 @@ export default function TicketShow({
                                         Tidak ada deskripsi
                                     </p>
                                 )}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base">Rencana Usulan</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4 text-sm">
+                                <div>
+                                    <p className="font-medium mb-1">Ide / pendekatan</p>
+                                    <p className="whitespace-pre-wrap text-muted-foreground">
+                                        {ticket.plan_ideas || '-'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="font-medium mb-1">Tools / kebutuhan</p>
+                                    <p className="whitespace-pre-wrap text-muted-foreground">
+                                        {ticket.plan_tools || '-'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="font-medium mb-1">Estimasi anggaran</p>
+                                    <p className="text-muted-foreground">
+                                        {ticket.budget_estimate !== null
+                                            ? `Rp ${ticket.budget_estimate.toLocaleString('id-ID')}`
+                                            : '-'}
+                                    </p>
+                                    {ticket.budget_notes && (
+                                        <p className="whitespace-pre-wrap text-muted-foreground mt-1">
+                                            {ticket.budget_notes}
+                                        </p>
+                                    )}
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -846,7 +925,7 @@ export default function TicketShow({
                                                 ))}
                                             </div>
                                         ) : (
-                                            <p className="text-sm text-muted-foreground text-center py-4">
+                                            <p className="text-sm text-muted-foreground text-center py-1">
                                                 Belum ada komentar
                                             </p>
                                         )}
@@ -854,16 +933,17 @@ export default function TicketShow({
                                         {!ticket.status.is_closed && (
                                             <form
                                                 onSubmit={handleCommentSubmit}
-                                                className="space-y-3 pt-4 border-t"
+                                                className="space-y-3 pt-3 border-t"
                                             >
                                                 <Textarea
+                                                    ref={commentBodyRef}
                                                     placeholder="Tulis komentar..."
                                                     value={commentForm.data.body}
                                                     onChange={(e) =>
                                                         commentForm.setData('body', e.target.value)
                                                     }
-                                                    rows={3}
-                                                    className="bg-background"
+                                                    rows={1}
+                                                    className="min-h-[11rem] max-h-[55vh] bg-background overflow-x-hidden"
                                                 />
                                                 <InputError message={commentForm.errors.body} />
                                                 <div className="flex flex-wrap items-center gap-4 justify-between">

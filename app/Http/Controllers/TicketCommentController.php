@@ -7,6 +7,7 @@ use App\Models\Ticket;
 use App\Models\TicketActivity;
 use App\Models\TicketComment;
 use App\Notifications\TicketCommentNotification;
+use App\Services\TicketTelegramGroupNotifier;
 use Illuminate\Http\RedirectResponse;
 
 class TicketCommentController extends Controller
@@ -47,6 +48,8 @@ class TicketCommentController extends Controller
                 $recipient->notify(new TicketCommentNotification($ticket, $comment));
             }
         }
+
+        TicketTelegramGroupNotifier::notifyTicketComment($ticket, $comment);
 
         return redirect()
             ->route('tickets.show', $ticket)

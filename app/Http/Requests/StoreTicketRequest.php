@@ -36,6 +36,17 @@ class StoreTicketRequest extends FormRequest
             'tag_ids.*' => ['integer', Rule::exists('ticket_tags', 'id')->where('is_active', true)],
             'created_at' => ['nullable', 'date'],
             'project_id' => ['nullable', 'integer', Rule::exists('projects', 'id')],
+            'is_draft' => ['nullable', 'boolean'],
+            'plan_ideas' => ['nullable', 'string', 'max:10000'],
+            'plan_tools' => ['nullable', 'string', 'max:10000'],
+            'budget_estimate' => ['nullable', 'integer', 'min:0'],
+            'budget_notes' => ['nullable', 'string', 'max:5000'],
+            'attachments' => ['nullable', 'array', 'max:10'],
+            'attachments.*' => [
+                'file',
+                'max:10240',
+                'mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,jfif,png,gif,webp,zip',
+            ],
         ];
 
         // Admin dan staff (teknisi) dapat memilih pemohon secara manual
@@ -63,6 +74,9 @@ class StoreTicketRequest extends FormRequest
             'title.required' => 'Judul tiket harus diisi.',
             'title.max' => 'Judul tiket maksimal 255 karakter.',
             'description.max' => 'Deskripsi tiket maksimal 10.000 karakter.',
+            'attachments.max' => 'Maksimal 10 file lampiran per tiket.',
+            'attachments.*.max' => 'Ukuran tiap file maksimal 10 MB.',
+            'attachments.*.mimes' => 'Format lampiran: pdf, doc, docx, xls, xlsx, jpg, jpeg, jfif, png, gif, webp, zip.',
         ];
     }
 
@@ -81,6 +95,8 @@ class StoreTicketRequest extends FormRequest
             'title' => 'judul',
             'description' => 'deskripsi',
             'created_at' => 'tanggal & waktu lapor',
+            'attachments' => 'lampiran',
+            'attachments.*' => 'file lampiran',
         ];
     }
 }

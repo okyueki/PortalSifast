@@ -36,6 +36,12 @@ class Ticket extends Model
         'related_ticket_id',
         'asset_id',
         'asset_no_inventaris',
+        'is_draft',
+        'published_at',
+        'plan_ideas',
+        'plan_tools',
+        'budget_estimate',
+        'budget_notes',
     ];
 
     protected $appends = ['response_time_minutes', 'resolution_time_minutes'];
@@ -49,6 +55,9 @@ class Ticket extends Model
             'first_response_at' => 'datetime',
             'resolved_at' => 'datetime',
             'closed_at' => 'datetime',
+            'published_at' => 'datetime',
+            'is_draft' => 'boolean',
+            'budget_estimate' => 'integer',
         ];
     }
 
@@ -226,6 +235,16 @@ class Ticket extends Model
         return $query->whereNull('assignee_id');
     }
 
+    public function scopeDraft($query)
+    {
+        return $query->where('is_draft', true);
+    }
+
+    public function scopePublished($query)
+    {
+        return $query->where('is_draft', false);
+    }
+
     public function scopeOpen($query)
     {
         return $query->whereHas('status', fn ($q) => $q->where('is_closed', false));
@@ -238,11 +257,12 @@ class Ticket extends Model
 
     public function scopeOverdue($query)
     {
-        return $query->where(function ($q) {
-            $q->where('due_date', '<', now())
-                ->orWhere('response_due_at', '<', now())
-                ->orWhere('resolution_due_at', '<', now());
-        })->whereHas('status', fn ($q) => $q->where('is_closed', false));
+        return $query->published()
+            ->where(function ($q) {
+                $q->where('due_date', '<', now())
+                    ->orWhere('response_due_at', '<', now())
+                    ->orWhere('resolution_due_at', '<', now());
+            })->whereHas('status', fn ($q) => $q->where('is_closed', false));
     }
 
     // ==================== HELPERS ====================
@@ -266,6 +286,11 @@ class Ticket extends Model
     public function isDevelopment(): bool
     {
         return $this->category?->is_development ?? false;
+    }
+
+    public function isDraft(): bool
+    {
+        return (bool) $this->is_draft;
     }
 
     /**

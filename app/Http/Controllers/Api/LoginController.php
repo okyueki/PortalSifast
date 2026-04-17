@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\ApiLoginRequest;
 use App\Models\User;
+use App\Services\SyncUserSimrsNikFromEmailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 
@@ -27,6 +28,11 @@ class LoginController extends Controller
             ], 401);
         }
 
+        if (blank($user->simrs_nik)) {
+            app(SyncUserSimrsNikFromEmailService::class)($user);
+            $user->refresh();
+        }
+
         $token = $user->createToken('api-login')->plainTextToken;
 
         return response()->json([
@@ -37,6 +43,8 @@ class LoginController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'simrs_nik' => $user->simrs_nik,
+                    'phone' => $user->phone,
                     'role' => $user->role,
                     'dep_id' => $user->dep_id,
                 ],

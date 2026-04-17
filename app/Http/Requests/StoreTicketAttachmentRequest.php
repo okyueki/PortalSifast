@@ -19,7 +19,7 @@ class StoreTicketAttachmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'file' => ['required', 'file', 'max:10240', 'mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif,zip'],
+            'file' => ['required', 'file', 'max:10240', 'mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,jfif,png,gif,webp,zip'],
         ];
     }
 
@@ -32,7 +32,7 @@ class StoreTicketAttachmentRequest extends FormRequest
             'file.required' => 'File harus dipilih.',
             'file.file' => 'Upload harus berupa file.',
             'file.max' => 'Ukuran file maksimal 10 MB.',
-            'file.mimes' => 'Format file: pdf, doc, docx, xls, xlsx, jpg, jpeg, png, gif, zip.',
+            'file.mimes' => 'Format file: pdf, doc, docx, xls, xlsx, jpg, jpeg, jfif, png, gif, webp, zip.',
         ];
     }
 }

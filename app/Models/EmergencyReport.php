@@ -17,9 +17,18 @@ class EmergencyReport extends Model
 
     public const STATUS_IN_PROGRESS = 'in_progress';
 
+    /** Petugas sudah sampai di lokasi pasien (sebelum pilih tujuan / resolved). */
+    public const STATUS_ARRIVED = 'arrived';
+
     public const STATUS_RESOLVED = 'resolved';
 
     public const STATUS_CANCELLED = 'cancelled';
+
+    /** Tujuan akhir saat resolved: bawa ke RS kita. */
+    public const DESTINATION_RS_KITA = 'rs_kita';
+
+    /** Tujuan akhir saat resolved: rujuk ke RS lain. */
+    public const DESTINATION_RUJUK = 'rujuk';
 
     public const CATEGORIES = [
         'kecelakaan_lalu_lintas',
@@ -48,6 +57,8 @@ class EmergencyReport extends Model
         'assigned_team',
         'responded_at',
         'resolved_at',
+        'destination_type',
+        'destination_name',
     ];
 
     protected function casts(): array

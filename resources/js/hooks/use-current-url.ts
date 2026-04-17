@@ -21,25 +21,47 @@ export type UseCurrentUrlReturn = {
 
 export function useCurrentUrl(): UseCurrentUrlReturn {
     const page = usePage();
-    const currentUrlPath = new URL(page.url, window?.location.origin).pathname;
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const currentPageUrl = new URL(page.url, origin);
 
     const isCurrentUrl: IsCurrentUrlFn = (
         urlToCheck: NonNullable<InertiaLinkProps['href']>,
         currentUrl?: string,
     ) => {
-        const urlToCompare = currentUrl ?? currentUrlPath;
         const urlString = toUrl(urlToCheck);
 
-        if (!urlString.startsWith('http')) {
-            return urlString === urlToCompare;
-        }
-
+        let target: URL;
         try {
-            const absoluteUrl = new URL(urlString);
-            return absoluteUrl.pathname === urlToCompare;
+            target = urlString.startsWith('http')
+                ? new URL(urlString)
+                : new URL(urlString, origin);
         } catch {
             return false;
         }
+
+        const current = currentUrl
+            ? new URL(currentUrl, origin)
+            : currentPageUrl;
+
+        if (target.pathname !== current.pathname) {
+            return false;
+        }
+
+        if (target.search) {
+            for (const [key, value] of target.searchParams.entries()) {
+                if (current.searchParams.get(key) !== value) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        if (current.pathname === '/tickets' && current.searchParams.get('draft') === '1') {
+            return false;
+        }
+
+        return true;
     };
 
     const whenCurrentUrl: WhenCurrentUrlFn = <TIfTrue, TIfFalse = null>(
@@ -51,7 +73,7 @@ export function useCurrentUrl(): UseCurrentUrlReturn {
     };
 
     return {
-        currentUrl: currentUrlPath,
+        currentUrl: currentPageUrl.pathname,
         isCurrentUrl,
         whenCurrentUrl,
     };

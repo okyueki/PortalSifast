@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Models\User;
+use App\Support\TelegramBotConfig;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -27,7 +28,7 @@ class TicketCommentNotification extends Notification implements ShouldQueue
     public function via(object $notifiable): array
     {
         $channels = ['mail', 'database'];
-        if ($notifiable instanceof User && $notifiable->hasTelegramConnected()) {
+        if ($notifiable instanceof User && $notifiable->hasTelegramConnected() && TelegramBotConfig::hasToken()) {
             $channels[] = 'telegram';
         }
 
@@ -38,14 +39,21 @@ class TicketCommentNotification extends Notification implements ShouldQueue
     {
         $url = route('tickets.show', $this->ticket);
         $body = Str::limit($this->comment->body, 150);
+        $token = TelegramBotConfig::token();
 
-        return TelegramMessage::create()
+        $message = TelegramMessage::create()
             ->content("*Komentar Baru pada Tiket*\n\n")
             ->line("Tiket: *{$this->ticket->ticket_number}*")
             ->line("Komentar: \"{$body}\"")
             ->line("Oleh: {$this->comment->user->name}")
             ->line('')
             ->line("[Buka di Portal]({$url})");
+
+        if ($token !== null) {
+            $message->token($token);
+        }
+
+        return $message;
     }
 
     public function toMail(object $notifiable): MailMessage

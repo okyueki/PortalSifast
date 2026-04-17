@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import {
     BarChart3,
     Columns3,
+    FilePenLine,
     FileText,
     FolderCog,
     LayoutGrid,
@@ -37,6 +38,11 @@ const mainNavItems: NavItem[] = [
         title: 'Tiket',
         href: '/tickets',
         icon: Ticket,
+    },
+    {
+        title: 'Draf Saya',
+        href: '/tickets?draft=1',
+        icon: FilePenLine,
     },
     {
         title: 'Papan Tiket',

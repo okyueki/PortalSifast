@@ -38,6 +38,8 @@ class TicketActivity extends Model
 
     public const ACTION_PRIORITY_CHANGED = 'priority_changed';
 
+    public const ACTION_REQUESTER_CHANGED = 'requester_changed';
+
     public const ACTION_COMMENTED = 'commented';
 
     public const ACTION_ATTACHMENT_ADDED = 'attachment_added';
@@ -79,6 +81,7 @@ class TicketActivity extends Model
             self::ACTION_ASSIGNED => 'Ditugaskan',
             self::ACTION_UNASSIGNED => 'Penugasan dihapus',
             self::ACTION_PRIORITY_CHANGED => 'Prioritas diubah',
+            self::ACTION_REQUESTER_CHANGED => 'Pemohon diubah',
             self::ACTION_COMMENTED => 'Komentar ditambahkan',
             self::ACTION_ATTACHMENT_ADDED => 'Lampiran ditambahkan',
             self::ACTION_CLOSED => 'Tiket ditutup',
