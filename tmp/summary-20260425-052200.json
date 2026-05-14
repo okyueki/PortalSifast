@@ -1,0 +1,4 @@
+{
+  "summary": "Halaman /simmutu/realisations dijadikan halaman Rekap Mutu dengan hero branding SIMMUTU, kartu ringkasan (total entri, rata-rata capaian, indikator unik), filter bulan + kode periode, tabel terstruktur, dan tautan ke rekap departemen. Route GET index dipindah ke middleware simmutu.view saja agar pengguna view-only bisa membaca rekap; create/store tetap simmutu.input. Controller menambah recapStats dan filter month; navigasi sidebar menambah item Rekap Mutu untuk semua yang punya akses view, menghapus duplikat dari blok input-only; dashboard dan breadcrumb input diselaraskan. SimmutuAccessTest ditambah untuk view-only; pint, test, npm build lulus.",
+  "current_status": "SIMMUTU: modul web + API SIMMUTU sudah ada; halaman rekap mutu di URL realisations sudah rebranding dan akses baca diperluas ke can_view. Input harian tetap di /simmutu/realisations/create."
+}

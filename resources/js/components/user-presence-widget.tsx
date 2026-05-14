@@ -1,5 +1,5 @@
-import { usePresence } from '@/contexts/presence-context';
 import { Users, Wifi, WifiOff } from 'lucide-react';
+import { usePresence } from '@/contexts/presence-context';
 
 export default function UserPresenceWidget() {
   const { online, users, count } = usePresence();

@@ -1,0 +1,4 @@
+{
+  "summary": "Implemented SIMMUTU end-to-end: migrations for user flags (can_manage_mutu, can_input_mutu, can_view_mutu_dashboard) and mutu_* tables; PHP enums; Eloquent models with mutuCategory relation on indicators; middleware aliases simmutu.view/manage/input; routes under /simmutu; controllers for dashboard, categories, indicators, realisations; Form Requests; Inertia pages; shared permissions.simmutu in HandleInertiaRequests; sidebar/mobile nav via build-simmutu-nav-group; superadmin-only SIMMUTU flags on user create/edit; fixed users/create to use useForm transform + post without invalid data option; factories and SimmutuAccessTest; Pint and npm build passed.",
+  "current_status": "SIMMUTU MVP is in place (master data, realisation input, dashboard, RBAC). Period scores/analyses tables exist but have no UI or jobs yet. Superadmin should set SIMMUTU flags per user and run migrate on other environments if not already applied."
+}

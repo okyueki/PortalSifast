@@ -9,10 +9,16 @@ use App\Http\Controllers\EmergencyReportWebController;
 use App\Http\Controllers\EmployeeSalaryWebImportController;
 use App\Http\Controllers\InventarisBarangController;
 use App\Http\Controllers\InventarisController;
+use App\Http\Controllers\MutuCategoryController;
+use App\Http\Controllers\MutuIndicatorController;
+use App\Http\Controllers\MutuRealisationController;
 use App\Http\Controllers\PegawaiController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RequesterReportController;
+use App\Http\Controllers\SimmutuDashboardController;
+use App\Http\Controllers\SimmutuDepartmentRecapController;
+use App\Http\Controllers\SimmutuUnitKerjaController;
 use App\Http\Controllers\SlaReportController;
 use App\Http\Controllers\TechnicianReportController;
 use App\Http\Controllers\TechnicianReportPrintController;
@@ -143,24 +149,62 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('chat/{conversation}', [ChatController::class, 'show'])->name('chat.show');
     Route::post('chat/{conversation}/messages', [ChatController::class, 'storeMessage'])->name('chat.messages.store');
 
+    // SIMMUTU (sistem informasi manajemen mutu)
+    Route::prefix('simmutu')->name('simmutu.')->group(function (): void {
+        Route::get('/', SimmutuDashboardController::class)
+            ->middleware('simmutu.view')
+            ->name('dashboard');
+        Route::get('recap/departments', SimmutuDepartmentRecapController::class)
+            ->middleware('simmutu.view')
+            ->name('recap.departments');
+
+        Route::get('unit-kerja', [SimmutuUnitKerjaController::class, 'index'])
+            ->middleware('simmutu.view')
+            ->name('unit-kerja.index');
+        Route::get('unit-kerja/{dep}', [SimmutuUnitKerjaController::class, 'show'])
+            ->middleware('simmutu.view')
+            ->where('dep', '[A-Za-z0-9._-]+')
+            ->name('unit-kerja.show');
+        Route::get('unit-kerja/{dep}/kategori/{category}', [SimmutuUnitKerjaController::class, 'category'])
+            ->middleware('simmutu.view')
+            ->where('dep', '[A-Za-z0-9._-]+')
+            ->name('unit-kerja.category');
+
+        Route::get('realisations', [MutuRealisationController::class, 'index'])
+            ->middleware('simmutu.view')
+            ->name('realisations.index');
+
+        Route::middleware(['simmutu.view', 'simmutu.manage'])->group(function (): void {
+            Route::resource('categories', MutuCategoryController::class)->except(['show']);
+            Route::resource('indicators', MutuIndicatorController::class)->except(['show']);
+        });
+
+        Route::middleware(['simmutu.view', 'simmutu.input'])->group(function (): void {
+            Route::get('realisations/create', [MutuRealisationController::class, 'create'])->name('realisations.create');
+            Route::post('realisations', [MutuRealisationController::class, 'store'])->name('realisations.store');
+        });
+    });
+
     // Payroll / Gaji Karyawan
-    Route::get('payroll', [EmployeeSalaryWebImportController::class, 'index'])->name('payroll.index');
-    Route::get('payroll/dashboard', [EmployeeSalaryWebImportController::class, 'dashboard'])->name('payroll.dashboard');
-    Route::get('payroll/import', [EmployeeSalaryWebImportController::class, 'create'])->name('payroll.import');
-    Route::post('payroll/import', [EmployeeSalaryWebImportController::class, 'store'])->name('payroll.import.store');
-    Route::get('payroll/import-history', [EmployeeSalaryWebImportController::class, 'importHistory'])->name('payroll.import-history');
-    Route::get('payroll/audit-logs', [EmployeeSalaryWebImportController::class, 'auditLogs'])->name('payroll.audit-logs');
-    Route::post('payroll/import/{payrollImport}/rollback', [EmployeeSalaryWebImportController::class, 'rollbackImport'])->name('payroll.rollback');
-    Route::post('payroll/import/{payrollImport}/approve', [EmployeeSalaryWebImportController::class, 'approveImport'])->name('payroll.approve');
-    Route::post('payroll/import/{payrollImport}/reject', [EmployeeSalaryWebImportController::class, 'rejectImport'])->name('payroll.reject');
-    Route::post('payroll/bulk-delete', [EmployeeSalaryWebImportController::class, 'bulkDestroy'])->name('payroll.bulk-destroy');
-    Route::post('payroll/bulk-email', [EmployeeSalaryWebImportController::class, 'sendBulkEmail'])->name('payroll.bulk-email');
-    Route::post('payroll/{employeeSalary}/send-email', [EmployeeSalaryWebImportController::class, 'sendEmail'])->name('payroll.send-email');
-    Route::get('payroll/employee/{nik}', [EmployeeSalaryWebImportController::class, 'employeeHistory'])->name('payroll.employee-history');
-    Route::get('payroll/{employeeSalary}', [EmployeeSalaryWebImportController::class, 'show'])->name('payroll.show');
-    Route::get('payroll/{employeeSalary}/print', [EmployeeSalaryWebImportController::class, 'print'])->name('payroll.print');
-    Route::patch('payroll/{employeeSalary}', [EmployeeSalaryWebImportController::class, 'update'])->name('payroll.update');
-    Route::delete('payroll/{employeeSalary}', [EmployeeSalaryWebImportController::class, 'destroy'])->name('payroll.destroy');
+    Route::middleware('payroll.access')->group(function (): void {
+        Route::get('payroll', [EmployeeSalaryWebImportController::class, 'index'])->name('payroll.index');
+        Route::get('payroll/dashboard', [EmployeeSalaryWebImportController::class, 'dashboard'])->name('payroll.dashboard');
+        Route::get('payroll/import', [EmployeeSalaryWebImportController::class, 'create'])->name('payroll.import');
+        Route::post('payroll/import', [EmployeeSalaryWebImportController::class, 'store'])->name('payroll.import.store');
+        Route::get('payroll/import-history', [EmployeeSalaryWebImportController::class, 'importHistory'])->name('payroll.import-history');
+        Route::get('payroll/audit-logs', [EmployeeSalaryWebImportController::class, 'auditLogs'])->name('payroll.audit-logs');
+        Route::post('payroll/import/{payrollImport}/rollback', [EmployeeSalaryWebImportController::class, 'rollbackImport'])->name('payroll.rollback');
+        Route::post('payroll/import/{payrollImport}/approve', [EmployeeSalaryWebImportController::class, 'approveImport'])->name('payroll.approve');
+        Route::post('payroll/import/{payrollImport}/reject', [EmployeeSalaryWebImportController::class, 'rejectImport'])->name('payroll.reject');
+        Route::post('payroll/bulk-delete', [EmployeeSalaryWebImportController::class, 'bulkDestroy'])->name('payroll.bulk-destroy');
+        Route::post('payroll/bulk-email', [EmployeeSalaryWebImportController::class, 'sendBulkEmail'])->name('payroll.bulk-email');
+        Route::post('payroll/{employeeSalary}/send-email', [EmployeeSalaryWebImportController::class, 'sendEmail'])->name('payroll.send-email');
+        Route::get('payroll/employee/{nik}', [EmployeeSalaryWebImportController::class, 'employeeHistory'])->name('payroll.employee-history');
+        Route::get('payroll/{employeeSalary}', [EmployeeSalaryWebImportController::class, 'show'])->name('payroll.show');
+        Route::get('payroll/{employeeSalary}/print', [EmployeeSalaryWebImportController::class, 'print'])->name('payroll.print');
+        Route::patch('payroll/{employeeSalary}', [EmployeeSalaryWebImportController::class, 'update'])->name('payroll.update');
+        Route::delete('payroll/{employeeSalary}', [EmployeeSalaryWebImportController::class, 'destroy'])->name('payroll.destroy');
+    });
 });
 
 require __DIR__.'/settings.php';

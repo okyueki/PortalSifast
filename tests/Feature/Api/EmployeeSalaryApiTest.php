@@ -51,7 +51,7 @@ test('user can only see own salaries', function () {
 
 test('service token requires nik query or header', function () {
     $service = User::factory()->create([
-        'email' => 'api-service@portal.local',
+        'email' => 'api-service+'.uniqid().'@portal.local',
         'simrs_nik' => null,
         'role' => 'pemohon',
     ]);
@@ -68,7 +68,7 @@ test('service token requires nik query or header', function () {
 
 test('service token can list payroll with nik query', function () {
     $service = User::factory()->create([
-        'email' => 'api-service@portal.local',
+        'email' => 'api-service+'.uniqid().'@portal.local',
         'simrs_nik' => null,
     ]);
 
@@ -93,7 +93,7 @@ test('service token can list payroll with nik query', function () {
 
 test('service token can list payroll with simrs_nik query alias', function () {
     $service = User::factory()->create([
-        'email' => 'api-service@portal.local',
+        'email' => 'api-service+'.uniqid().'@portal.local',
         'simrs_nik' => null,
     ]);
 
@@ -137,4 +137,26 @@ test('service token can list payroll with X-Sifast-Nik header', function () {
         ->getJson('/api/sifast/payroll?page=1')
         ->assertOk()
         ->assertJsonCount(1, 'data');
+});
+
+test('admin without payroll access cannot request other employee salary by nik', function () {
+    $admin = User::factory()->admin()->create([
+        'simrs_nik' => '00.00.00.0000',
+        'can_access_payroll' => false,
+    ]);
+
+    EmployeeSalary::query()->create([
+        'period_start' => '2026-02-01',
+        'simrs_nik' => '77.77.77.7777',
+        'employee_name' => 'Pegawai Rahasia',
+        'unit' => 'Keuangan',
+        'penerimaan' => '7000000',
+        'pajak' => '0',
+        'zakat' => '0',
+        'raw_row' => ['nik' => '77.77.77.7777'],
+    ]);
+
+    actingAs($admin, 'sanctum')
+        ->getJson('/api/sifast/payroll?nik=77.77.77.7777')
+        ->assertForbidden();
 });

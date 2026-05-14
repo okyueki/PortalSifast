@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\FcmController;
 use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\OfficerAuthController;
 use App\Http\Controllers\Api\OfficerLocationController;
+use App\Http\Controllers\Api\SimmutuApiController;
 use App\Http\Controllers\Api\TelegramWebhookController;
 use App\Http\Controllers\Api\WorkNoteController;
 use App\Models\TicketCategory;
@@ -85,6 +86,13 @@ Route::middleware('auth:sanctum')->group(function () {
         // Payroll / Gaji Karyawan (untuk pegawai lihat gaji sendiri)
         Route::get('/payroll', [EmployeeSalaryController::class, 'index']);
         Route::get('/payroll/{employeeSalary}', [EmployeeSalaryController::class, 'show']);
+
+        // SIMMUTU (integrasi frontend eksternal)
+        Route::prefix('simmutu')->group(function () {
+            Route::get('/indicators', [SimmutuApiController::class, 'indicators']);
+            Route::get('/realisations', [SimmutuApiController::class, 'index']);
+            Route::post('/realisations', [SimmutuApiController::class, 'store']);
+        });
 
         // Emergency / Panic Button
         Route::prefix('emergency')->group(function () {

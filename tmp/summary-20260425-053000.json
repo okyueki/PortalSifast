@@ -1,0 +1,4 @@
+{
+  "summary": "Menambah fitur SIMMUTU Unit kerja: daftar unit dari model Departemen (koneksi dbsimrs) dengan ringkasan kategori, profil indikator (aktif/total), dan entri realisasi; drill-down /simmutu/unit-kerja/{dep} menampilkan kategori mutu yang punya indikator terpetakan ke unit; drill-down /simmutu/unit-kerja/{dep}/kategori/{category} menampilkan tabel profil dengan status aktif, frekuensi, target, benchmark, jumlah entri, terakhir input, plus tautan edit untuk can_manage. Akses simmutu.view; non-manage hanya unit sendiri (dep_id). Nav sidebar + tombol dashboard. Tes: SimmutuAccessTest ditambah forbidden tanpa akses; SimmutuUnitKerjaTest dengan skip jika SIMRS tidak ada (di environment ini tes drilldown lulus). Pint dan npm build OK.",
+  "current_status": "SIMMUTU mencakup dashboard, rekap departemen, rekap mutu, input harian, master (manage), API eksternal, dan pemantauan Unit kerja bertingkat dari master SIMRS."
+}

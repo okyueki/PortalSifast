@@ -1,0 +1,4 @@
+{
+    "summary": "Revised SIMMUTU per your notes: added indicator-level benchmarking flag (migration, model, request, controller, create\/edit forms, index table), changed mapping label to Unit Terkait with one-click Pilih semua in indicator create\/edit, changed realisation index numeric presentation to plain values (no accounting-like formatting), and added realisation filters by indikator, unit, and period anchor in backend+frontend.",
+    "current_status": "Input realisasi is working with date-based entry; profile indikator now carries benchmarking; unit mapping UX is faster; realisation list has filters and cleaner number display. Remaining optional refinement is adding more filter types (date range) if needed."
+}

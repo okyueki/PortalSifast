@@ -16,10 +16,10 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
-import AppLayout from '@/layouts/app-layout';
 import Heading from '@/components/heading';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
 type SalaryItem = {

@@ -1,7 +1,7 @@
 import { Plus, Trash2 } from 'lucide-react';
-import { BlockRenderer } from './BlockRenderer';
 import { Button } from '@/components/ui/button';
 import type { Block, BlockType, Note } from '@/types/note';
+import { BlockRenderer } from './BlockRenderer';
 
 interface NoteEditorProps {
     note: Note;

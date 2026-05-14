@@ -3,8 +3,8 @@ import { ArrowLeft, Send, WifiOff } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import AppLayout from '@/layouts/app-layout';
 import { useWebSocketStatus } from '@/hooks/use-websocket-status';
+import AppLayout from '@/layouts/app-layout';
 
 type Message = {
     id: number;

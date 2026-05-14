@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
 import { Head } from '@inertiajs/react';
+import { useEffect, useMemo } from 'react';
 
 type CategoryItem = { id: number | null; name: string; count: number };
 type TagItem = { id: number; name: string; count: number };

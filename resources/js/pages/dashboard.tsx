@@ -10,9 +10,9 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import AppLayout from '@/layouts/app-layout';
-import UserPresenceWidget from '@/components/user-presence-widget';
 import UserOnlineStatus from '@/components/user-online-status';
+import UserPresenceWidget from '@/components/user-presence-widget';
+import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
 import type { Ticket as TicketType } from '@/types/ticket';

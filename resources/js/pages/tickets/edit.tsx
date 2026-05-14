@@ -1,10 +1,13 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { InventarisSearchInput } from '@/components/inventaris-search-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -15,10 +18,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { InventarisSearchInput } from '@/components/inventaris-search-input';
 import { UserSearchInput } from '@/components/user-search-input';
-import { ConfirmDialog } from '@/components/confirm-dialog';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';

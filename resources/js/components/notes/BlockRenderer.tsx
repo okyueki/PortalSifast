@@ -1,4 +1,6 @@
+import { ChevronRight, GripVertical, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -15,8 +17,6 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ChevronRight, GripVertical, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Block, BlockType, BLOCK_TYPES } from '@/types/note';
 

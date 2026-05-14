@@ -1,0 +1,4 @@
+{
+    "summary": "Updated SIMMUTU realisation input UX as requested: moved numerator\/denominator definitions to sit directly under each input field, added live JavaScript percentage preview before saving, displayed current inputter name from logged-in auth user, and made department auto-follow login user department (shown read-only when user has dep_id). Kept indicator description\/frequency panel and preserved backend submission shape.",
+    "current_status": "Realisasi input page now gives clearer guidance near numeric fields and real-time feedback. Auto identity\/dept behavior is implemented on the form; build and lints pass."
+}

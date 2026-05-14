@@ -1,11 +1,11 @@
 import { Head } from '@inertiajs/react';
 import { Users, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import AppLayout from '@/layouts/app-layout';
 import { usePresence } from '@/contexts/presence-context';
 import { useWebSocketStatus } from '@/hooks/use-websocket-status';
-import { useState, useEffect } from 'react';
+import AppLayout from '@/layouts/app-layout';
 
 interface OnlineUser {
     id: number;

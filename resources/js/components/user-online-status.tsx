@@ -1,6 +1,6 @@
-import { usePresence } from '@/contexts/presence-context';
 import { Users, Wifi, WifiOff } from 'lucide-react';
 import { useState } from 'react';
+import { usePresence } from '@/contexts/presence-context';
 
 interface OnlineUser {
   id: number;

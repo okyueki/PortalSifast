@@ -1,10 +1,10 @@
 import { Head } from '@inertiajs/react';
 import { FileText } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import AppLayout from '@/layouts/app-layout';
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import { NotesList } from '@/components/notes/NotesList';
 import { NoteEditor } from '@/components/notes/NoteEditor';
+import { NotesList } from '@/components/notes/NotesList';
+import AppLayout from '@/layouts/app-layout';
 import { getCsrfToken } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';

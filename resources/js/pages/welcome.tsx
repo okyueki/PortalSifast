@@ -1,7 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
+import AppLogoIcon from '@/components/app-logo-icon';
 import { dashboard, login, register } from '@/routes';
 import type { SharedData } from '@/types';
-import AppLogoIcon from '@/components/app-logo-icon';
 
 export default function Welcome({
     canRegister = true,

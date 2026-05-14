@@ -8,10 +8,10 @@ import {
     User2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import AppLayout from '@/layouts/app-layout';
 import Heading from '@/components/heading';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import { getComponentsBySection } from './payroll-components';
 

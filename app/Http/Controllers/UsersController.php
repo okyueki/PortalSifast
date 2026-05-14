@@ -54,6 +54,9 @@ class UsersController extends Controller
 
     public function create(): Response
     {
+        $canManagePayrollAccess = request()->user()?->canManagePayrollAccess() ?? false;
+        $canManageMutuAccess = request()->user()?->canManageMutuAccess() ?? false;
+
         $existingUserNiks = User::query()
             ->whereNotNull('simrs_nik')
             ->pluck('simrs_nik')
@@ -103,11 +106,16 @@ class UsersController extends Controller
         return Inertia::render('users/create', [
             'availablePegawai' => $availablePegawai,
             'departments' => $departments,
+            'canManagePayrollAccess' => $canManagePayrollAccess,
+            'canManageMutuAccess' => $canManageMutuAccess,
         ]);
     }
 
     public function store(StoreUserRequest $request): RedirectResponse
     {
+        $canManagePayrollAccess = $request->user()?->canManagePayrollAccess() ?? false;
+        $canManageMutuAccess = $request->user()?->canManageMutuAccess() ?? false;
+
         User::query()->create([
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
@@ -117,6 +125,18 @@ class UsersController extends Controller
             'source' => $request->validated('simrs_nik') ? 'simrs' : 'manual',
             'role' => $request->validated('role'),
             'dep_id' => $request->validated('dep_id') ?: null,
+            'can_access_payroll' => $canManagePayrollAccess
+                ? (bool) $request->boolean('can_access_payroll')
+                : false,
+            'can_manage_mutu' => $canManageMutuAccess
+                ? (bool) $request->boolean('can_manage_mutu')
+                : false,
+            'can_input_mutu' => $canManageMutuAccess
+                ? (bool) $request->boolean('can_input_mutu')
+                : false,
+            'can_view_mutu_dashboard' => $canManageMutuAccess
+                ? (bool) $request->boolean('can_view_mutu_dashboard')
+                : false,
         ]);
 
         return redirect()->route('users.index')->with('success', 'User berhasil ditambahkan.');
@@ -124,6 +144,9 @@ class UsersController extends Controller
 
     public function edit(User $user): Response
     {
+        $canManagePayrollAccess = request()->user()?->canManagePayrollAccess() ?? false;
+        $canManageMutuAccess = request()->user()?->canManageMutuAccess() ?? false;
+
         try {
             $departments = \App\Models\Departemen::orderBy('nama')->get(['dep_id', 'nama']);
         } catch (\Throwable) {
@@ -134,13 +157,29 @@ class UsersController extends Controller
         }
 
         return Inertia::render('users/edit', [
-            'user' => $user->only(['id', 'name', 'email', 'phone', 'role', 'dep_id']),
+            'user' => $user->only([
+                'id',
+                'name',
+                'email',
+                'phone',
+                'role',
+                'dep_id',
+                'can_access_payroll',
+                'can_manage_mutu',
+                'can_input_mutu',
+                'can_view_mutu_dashboard',
+            ]),
             'departments' => $departments,
+            'canManagePayrollAccess' => $canManagePayrollAccess,
+            'canManageMutuAccess' => $canManageMutuAccess,
         ]);
     }
 
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
+        $canManagePayrollAccess = $request->user()?->canManagePayrollAccess() ?? false;
+        $canManageMutuAccess = $request->user()?->canManageMutuAccess() ?? false;
+
         $data = [
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
@@ -148,6 +187,16 @@ class UsersController extends Controller
             'role' => $request->validated('role'),
             'dep_id' => $request->validated('dep_id') ?: null,
         ];
+
+        if ($canManagePayrollAccess) {
+            $data['can_access_payroll'] = (bool) $request->boolean('can_access_payroll');
+        }
+
+        if ($canManageMutuAccess) {
+            $data['can_manage_mutu'] = (bool) $request->boolean('can_manage_mutu');
+            $data['can_input_mutu'] = (bool) $request->boolean('can_input_mutu');
+            $data['can_view_mutu_dashboard'] = (bool) $request->boolean('can_view_mutu_dashboard');
+        }
 
         if ($request->filled('password')) {
             $data['password'] = $request->validated('password');

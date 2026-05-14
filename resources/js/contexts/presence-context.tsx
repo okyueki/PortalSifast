@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { usePage } from '@inertiajs/react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 export interface OnlineUser {
   id: number;

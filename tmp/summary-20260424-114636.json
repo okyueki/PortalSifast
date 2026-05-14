@@ -1,0 +1,4 @@
+{
+    "summary": "Implemented phase-1 Rekap Mutu per Departemen: added new SIMMUTU route \/simmutu\/recap\/departments and controller SimmutuDepartmentRecapController with month\/department\/indicator filters, aggregate recap table data by department (entry count, indicator count, avg\/min\/max achievement), daily trend series for selected department, and missing-day visibility. Added new Inertia page resources\/js\/pages\/simmutu\/recap\/department.tsx with filter form, ranking bar chart, daily line chart, and recap table. Hooked the page into SIMMUTU sidebar nav and added feature test asserting access with can_view_mutu_dashboard.",
+    "current_status": "Rekap per departemen is now available and functional with core aggregation and visualization. Existing SIMMUTU access tests pass, formatting passes, and frontend build passes. Next iteration can refine to match screenshot style more closely and add export\/print if needed."
+}

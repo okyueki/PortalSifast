@@ -36,6 +36,10 @@ class User extends Authenticatable
         'source',
         'role',
         'dep_id',
+        'can_access_payroll',
+        'can_manage_mutu',
+        'can_input_mutu',
+        'can_view_mutu_dashboard',
     ];
 
     /**
@@ -61,6 +65,10 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'can_access_payroll' => 'boolean',
+            'can_manage_mutu' => 'boolean',
+            'can_input_mutu' => 'boolean',
+            'can_view_mutu_dashboard' => 'boolean',
         ];
     }
 
@@ -123,6 +131,16 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
+    public function isSuperAdmin(): bool
+    {
+        $emails = config('auth.superadmin_emails', []);
+        if (! is_array($emails)) {
+            return false;
+        }
+
+        return in_array(mb_strtolower((string) $this->email), $emails, true);
+    }
+
     public function isStaff(): bool
     {
         return $this->role === 'staff';
@@ -139,9 +157,45 @@ class User extends Authenticatable
      */
     public function isPayrollServiceIntegrationAccount(): bool
     {
-        return str_contains($this->email ?? '', 'api-service@')
-            || str_contains($this->email ?? '', 'service@')
+        $email = mb_strtolower((string) ($this->email ?? ''));
+
+        return str_contains($email, 'api-service')
+            || str_contains($email, 'service@')
             || $this->role === 'service';
+    }
+
+    public function canAccessPayroll(): bool
+    {
+        return $this->isSuperAdmin() || (bool) $this->can_access_payroll;
+    }
+
+    public function canManagePayrollAccess(): bool
+    {
+        return $this->isSuperAdmin();
+    }
+
+    public function canAccessSimmutuModule(): bool
+    {
+        return $this->isSuperAdmin()
+            || (bool) $this->can_manage_mutu
+            || (bool) $this->can_input_mutu
+            || (bool) $this->can_view_mutu_dashboard;
+    }
+
+    public function canManageMutu(): bool
+    {
+        return $this->isSuperAdmin() || (bool) $this->can_manage_mutu;
+    }
+
+    public function canRecordMutuRealisation(): bool
+    {
+        return $this->canManageMutu()
+            || ((bool) $this->can_input_mutu && $this->dep_id !== null && $this->dep_id !== '');
+    }
+
+    public function canManageMutuAccess(): bool
+    {
+        return $this->isSuperAdmin();
     }
 
     /**

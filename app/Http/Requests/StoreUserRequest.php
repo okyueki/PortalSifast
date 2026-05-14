@@ -28,6 +28,10 @@ class StoreUserRequest extends FormRequest
             'simrs_nik' => ['nullable', 'string', 'max:50'],
             'role' => ['required', 'string', 'in:admin,staff,pemohon'],
             'dep_id' => ['nullable', 'string', 'max:50'],
+            'can_access_payroll' => ['nullable', 'boolean'],
+            'can_manage_mutu' => ['nullable', 'boolean'],
+            'can_input_mutu' => ['nullable', 'boolean'],
+            'can_view_mutu_dashboard' => ['nullable', 'boolean'],
         ];
     }
 

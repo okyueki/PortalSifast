@@ -112,4 +112,18 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Superadmin Emails
+    |--------------------------------------------------------------------------
+    |
+    | Email yang dianggap superadmin. Hanya superadmin yang dapat memilih
+    | siapa saja user yang diberi akses payroll.
+    |
+    */
+    'superadmin_emails' => array_values(array_filter(array_map(
+        fn (string $email) => mb_strtolower(trim($email)),
+        explode(',', (string) env('AUTH_SUPERADMIN_EMAILS', ''))
+    ))),
+
 ];

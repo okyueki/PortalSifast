@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Building2, User, Tag, FolderOpen, AlertTriangle, BarChart3, FileText, Target, Lightbulb } from 'lucide-react';
 import {
     Bar,
     BarChart,
@@ -9,7 +10,6 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
-import { Building2, User, Tag, FolderOpen, AlertTriangle, BarChart3, FileText, Target, Lightbulb } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

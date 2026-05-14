@@ -12,19 +12,25 @@ test('guest cannot import employee salaries', function () {
 });
 
 test('admin can open payroll import page', function () {
-    $admin = User::factory()->admin()->create();
+    $admin = User::factory()->admin()->create(['can_access_payroll' => true]);
 
     actingAs($admin)->get('/payroll/import')->assertOk();
 });
 
 test('admin can open payroll index page', function () {
-    $admin = User::factory()->admin()->create();
+    $admin = User::factory()->admin()->create(['can_access_payroll' => true]);
 
     actingAs($admin)->get('/payroll')->assertOk();
 });
 
+test('admin without payroll access cannot open payroll index page', function () {
+    $admin = User::factory()->admin()->create(['can_access_payroll' => false]);
+
+    actingAs($admin)->get('/payroll')->assertForbidden();
+});
+
 test('payroll index supports search and unit filters', function () {
-    $admin = User::factory()->admin()->create();
+    $admin = User::factory()->admin()->create(['can_access_payroll' => true]);
 
     \App\Models\EmployeeSalary::query()->create([
         'period_start' => '2026-02-01',
@@ -55,7 +61,7 @@ test('payroll index supports search and unit filters', function () {
 });
 
 test('payroll index supports sorting', function () {
-    $admin = User::factory()->admin()->create();
+    $admin = User::factory()->admin()->create(['can_access_payroll' => true]);
 
     \App\Models\EmployeeSalary::query()->create([
         'period_start' => '2026-02-01',
@@ -94,7 +100,7 @@ test('payroll index supports sorting', function () {
 });
 
 test('payroll index can export csv', function () {
-    $admin = User::factory()->admin()->create();
+    $admin = User::factory()->admin()->create(['can_access_payroll' => true]);
 
     \App\Models\EmployeeSalary::query()->create([
         'period_start' => '2026-02-01',
@@ -119,7 +125,7 @@ test('payroll index can export csv', function () {
 });
 
 test('payroll index returns summary totals', function () {
-    $admin = User::factory()->admin()->create();
+    $admin = User::factory()->admin()->create(['can_access_payroll' => true]);
 
     \App\Models\EmployeeSalary::query()->create([
         'period_start' => '2026-02-01',
@@ -153,7 +159,7 @@ test('payroll index returns summary totals', function () {
 });
 
 test('admin can open payroll show page for a salary', function () {
-    $admin = User::factory()->admin()->create();
+    $admin = User::factory()->admin()->create(['can_access_payroll' => true]);
 
     $salary = \App\Models\EmployeeSalary::query()->create([
         'period_start' => '2025-12-01',
@@ -175,7 +181,7 @@ test('admin can open payroll show page for a salary', function () {
 });
 
 test('admin can bulk delete salaries', function () {
-    $admin = User::factory()->admin()->create();
+    $admin = User::factory()->admin()->create(['can_access_payroll' => true]);
 
     $salary1 = \App\Models\EmployeeSalary::query()->create([
         'period_start' => '2026-02-01',
@@ -208,7 +214,7 @@ test('admin can bulk delete salaries', function () {
 });
 
 test('admin can update and delete a salary', function () {
-    $admin = User::factory()->admin()->create();
+    $admin = User::factory()->admin()->create(['can_access_payroll' => true]);
 
     $salary = \App\Models\EmployeeSalary::query()->create([
         'period_start' => '2025-12-01',
@@ -243,7 +249,7 @@ test('admin can update and delete a salary', function () {
 });
 
 test('can import employee salaries from csv and match user by simrs_nik', function () {
-    $importer = User::factory()->admin()->create();
+    $importer = User::factory()->admin()->create(['can_access_payroll' => true]);
 
     $employee = User::factory()->create([
         'name' => 'Sri Rahmawati, SE',

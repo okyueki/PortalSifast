@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -37,10 +38,17 @@ type Department = {
 type Props = {
     availablePegawai: PegawaiOption[];
     departments: Department[];
+    canManagePayrollAccess: boolean;
+    canManageMutuAccess: boolean;
 };
 
-export default function UsersCreate({ availablePegawai, departments }: Props) {
-    const { data, setData, post, processing, errors } = useForm({
+export default function UsersCreate({
+    availablePegawai,
+    departments,
+    canManagePayrollAccess,
+    canManageMutuAccess,
+}: Props) {
+    const { data, setData, post, processing, errors, transform } = useForm({
         simrs_nik: '',
         name: '',
         email: '',
@@ -49,7 +57,16 @@ export default function UsersCreate({ availablePegawai, departments }: Props) {
         phone: '',
         role: 'pemohon',
         dep_id: '__none__',
+        can_access_payroll: false,
+        can_manage_mutu: false,
+        can_input_mutu: false,
+        can_view_mutu_dashboard: false,
     });
+
+    transform((raw) => ({
+        ...raw,
+        dep_id: raw.dep_id === '__none__' ? null : raw.dep_id,
+    }));
 
     const [selectedPegawaiNik, setSelectedPegawaiNik] = useState<string>('');
 
@@ -69,13 +86,7 @@ export default function UsersCreate({ availablePegawai, departments }: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const payload = {
-            ...data,
-            dep_id: data.dep_id === '__none__' ? null : data.dep_id,
-        };
-        post('/users', {
-            data: payload,
-        });
+        post('/users');
     };
 
     return (
@@ -234,6 +245,69 @@ export default function UsersCreate({ availablePegawai, departments }: Props) {
                             Wajib untuk Staff (IT/IPS). Kosongkan untuk Admin/Pemohon.
                         </p>
                     </div>
+
+                    {canManagePayrollAccess && (
+                        <div className="grid gap-2 rounded-lg border border-border p-4">
+                            <div className="flex items-center gap-3">
+                                <Checkbox
+                                    id="can_access_payroll"
+                                    checked={Boolean(data.can_access_payroll)}
+                                    onCheckedChange={(checked) => setData('can_access_payroll', checked === true)}
+                                />
+                                <Label htmlFor="can_access_payroll" className="cursor-pointer">
+                                    Izinkan akses Payroll untuk user ini
+                                </Label>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Hanya superadmin yang dapat memberi/mencabut akses payroll.
+                            </p>
+                            <InputError message={errors.can_access_payroll} />
+                        </div>
+                    )}
+
+                    {canManageMutuAccess && (
+                        <div className="grid gap-3 rounded-lg border border-border p-4">
+                            <p className="text-sm font-medium">SIMMUTU</p>
+                            <div className="flex items-center gap-3">
+                                <Checkbox
+                                    id="can_manage_mutu"
+                                    checked={Boolean(data.can_manage_mutu)}
+                                    onCheckedChange={(checked) => setData('can_manage_mutu', checked === true)}
+                                />
+                                <Label htmlFor="can_manage_mutu" className="cursor-pointer">
+                                    Kelola master mutu (kategori & indikator)
+                                </Label>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Checkbox
+                                    id="can_input_mutu"
+                                    checked={Boolean(data.can_input_mutu)}
+                                    onCheckedChange={(checked) => setData('can_input_mutu', checked === true)}
+                                />
+                                <Label htmlFor="can_input_mutu" className="cursor-pointer">
+                                    Input realisasi mutu (wajib ada departemen)
+                                </Label>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Checkbox
+                                    id="can_view_mutu_dashboard"
+                                    checked={Boolean(data.can_view_mutu_dashboard)}
+                                    onCheckedChange={(checked) =>
+                                        setData('can_view_mutu_dashboard', checked === true)
+                                    }
+                                />
+                                <Label htmlFor="can_view_mutu_dashboard" className="cursor-pointer">
+                                    Akses dashboard SIMMUTU
+                                </Label>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Hanya superadmin yang dapat mengatur flag SIMMUTU per user.
+                            </p>
+                            <InputError message={errors.can_manage_mutu} />
+                            <InputError message={errors.can_input_mutu} />
+                            <InputError message={errors.can_view_mutu_dashboard} />
+                        </div>
+                    )}
 
                     <div className="flex gap-3">
                         <Button type="submit" disabled={processing}>

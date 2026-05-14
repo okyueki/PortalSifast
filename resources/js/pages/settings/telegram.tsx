@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import { Form, Head, router } from '@inertiajs/react';
+import { useEffect } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';

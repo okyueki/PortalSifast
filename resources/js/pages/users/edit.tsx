@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -35,11 +36,22 @@ type Props = {
         phone: string | null;
         role: string;
         dep_id: string | null;
+        can_access_payroll?: boolean;
+        can_manage_mutu?: boolean;
+        can_input_mutu?: boolean;
+        can_view_mutu_dashboard?: boolean;
     };
     departments: Department[];
+    canManagePayrollAccess: boolean;
+    canManageMutuAccess: boolean;
 };
 
-export default function UsersEdit({ user, departments }: Props) {
+export default function UsersEdit({
+    user,
+    departments,
+    canManagePayrollAccess,
+    canManageMutuAccess,
+}: Props) {
     const { data, setData } = useForm({
         name: user.name,
         email: user.email,
@@ -48,6 +60,10 @@ export default function UsersEdit({ user, departments }: Props) {
         phone: user.phone || '',
         role: user.role,
         dep_id: user.dep_id || '__none__',
+        can_access_payroll: Boolean(user.can_access_payroll),
+        can_manage_mutu: Boolean(user.can_manage_mutu),
+        can_input_mutu: Boolean(user.can_input_mutu),
+        can_view_mutu_dashboard: Boolean(user.can_view_mutu_dashboard),
     });
 
     const pageErrors = (usePage().props as { errors?: Record<string, string | string[]> }).errors ?? {};
@@ -67,6 +83,14 @@ export default function UsersEdit({ user, departments }: Props) {
             role: data.role,
             dep_id: data.dep_id === '__none__' ? null : data.dep_id,
         };
+        if (canManagePayrollAccess) {
+            payload.can_access_payroll = Boolean(data.can_access_payroll);
+        }
+        if (canManageMutuAccess) {
+            payload.can_manage_mutu = Boolean(data.can_manage_mutu);
+            payload.can_input_mutu = Boolean(data.can_input_mutu);
+            payload.can_view_mutu_dashboard = Boolean(data.can_view_mutu_dashboard);
+        }
         if (data.password) {
             payload.password = data.password;
             payload.password_confirmation = data.password_confirmation;
@@ -158,6 +182,69 @@ export default function UsersEdit({ user, departments }: Props) {
                             Wajib untuk Staff (IT/IPS). Kosongkan untuk Admin/Pemohon.
                         </p>
                     </div>
+
+                    {canManagePayrollAccess && (
+                        <div className="grid gap-2 rounded-lg border border-border p-4">
+                            <div className="flex items-center gap-3">
+                                <Checkbox
+                                    id="can_access_payroll"
+                                    checked={Boolean(data.can_access_payroll)}
+                                    onCheckedChange={(checked) => setData('can_access_payroll', checked === true)}
+                                />
+                                <Label htmlFor="can_access_payroll" className="cursor-pointer">
+                                    Izinkan akses Payroll untuk user ini
+                                </Label>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Hanya superadmin yang dapat memberi/mencabut akses payroll.
+                            </p>
+                            <InputError message={getError('can_access_payroll')} />
+                        </div>
+                    )}
+
+                    {canManageMutuAccess && (
+                        <div className="grid gap-3 rounded-lg border border-border p-4">
+                            <p className="text-sm font-medium">SIMMUTU</p>
+                            <div className="flex items-center gap-3">
+                                <Checkbox
+                                    id="can_manage_mutu"
+                                    checked={Boolean(data.can_manage_mutu)}
+                                    onCheckedChange={(checked) => setData('can_manage_mutu', checked === true)}
+                                />
+                                <Label htmlFor="can_manage_mutu" className="cursor-pointer">
+                                    Kelola master mutu (kategori & indikator)
+                                </Label>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Checkbox
+                                    id="can_input_mutu"
+                                    checked={Boolean(data.can_input_mutu)}
+                                    onCheckedChange={(checked) => setData('can_input_mutu', checked === true)}
+                                />
+                                <Label htmlFor="can_input_mutu" className="cursor-pointer">
+                                    Input realisasi mutu (wajib ada departemen)
+                                </Label>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Checkbox
+                                    id="can_view_mutu_dashboard"
+                                    checked={Boolean(data.can_view_mutu_dashboard)}
+                                    onCheckedChange={(checked) =>
+                                        setData('can_view_mutu_dashboard', checked === true)
+                                    }
+                                />
+                                <Label htmlFor="can_view_mutu_dashboard" className="cursor-pointer">
+                                    Akses dashboard SIMMUTU
+                                </Label>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Hanya superadmin yang dapat mengatur flag SIMMUTU per user.
+                            </p>
+                            <InputError message={getError('can_manage_mutu')} />
+                            <InputError message={getError('can_input_mutu')} />
+                            <InputError message={getError('can_view_mutu_dashboard')} />
+                        </div>
+                    )}
 
                     <div className="grid gap-2">
                         <Label htmlFor="phone">No. HP (opsional)</Label>

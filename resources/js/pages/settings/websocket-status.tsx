@@ -1,9 +1,9 @@
 import { Head } from '@inertiajs/react';
 import { CheckCircle2, Circle, HelpCircle, Server, Wifi, WifiOff, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useWebSocketStatus } from '@/hooks/use-websocket-status';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { useWebSocketStatus } from '@/hooks/use-websocket-status';
 import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 

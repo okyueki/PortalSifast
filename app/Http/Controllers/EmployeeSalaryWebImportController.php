@@ -22,7 +22,7 @@ class EmployeeSalaryWebImportController extends Controller
     public function dashboard(Request $request): Response
     {
         $user = $request->user();
-        if (! $user?->isAdmin() && ! $user?->isStaff()) {
+        if (! $user?->canAccessPayroll()) {
             abort(403, 'Hanya admin dan staff yang dapat melihat dashboard.');
         }
 
@@ -145,7 +145,7 @@ class EmployeeSalaryWebImportController extends Controller
     public function index(Request $request): Response|StreamedResponse
     {
         $user = $request->user();
-        if (! $user?->isAdmin() && ! $user?->isStaff()) {
+        if (! $user?->canAccessPayroll()) {
             abort(403, 'Hanya admin dan staff yang dapat melihat gaji.');
         }
 
@@ -313,7 +313,7 @@ class EmployeeSalaryWebImportController extends Controller
     public function show(Request $request, EmployeeSalary $employeeSalary): Response
     {
         $user = $request->user();
-        if (! $user?->isAdmin() && ! $user?->isStaff()) {
+        if (! $user?->canAccessPayroll()) {
             abort(403, 'Hanya admin dan staff yang dapat melihat gaji.');
         }
 
@@ -344,7 +344,7 @@ class EmployeeSalaryWebImportController extends Controller
     public function print(Request $request, EmployeeSalary $employeeSalary): Response
     {
         $user = $request->user();
-        if (! $user?->isAdmin() && ! $user?->isStaff()) {
+        if (! $user?->canAccessPayroll()) {
             abort(403, 'Hanya admin dan staff yang dapat melihat gaji.');
         }
 
@@ -375,7 +375,7 @@ class EmployeeSalaryWebImportController extends Controller
     public function create(): Response
     {
         $user = request()->user();
-        if (! $user?->isAdmin() && ! $user?->isStaff()) {
+        if (! $user?->canAccessPayroll()) {
             abort(403, 'Hanya admin dan staff yang dapat mengimpor gaji.');
         }
 
@@ -385,7 +385,7 @@ class EmployeeSalaryWebImportController extends Controller
     public function importHistory(Request $request): Response
     {
         $user = $request->user();
-        if (! $user?->isAdmin() && ! $user?->isStaff()) {
+        if (! $user?->canAccessPayroll()) {
             abort(403, 'Hanya admin dan staff yang dapat melihat riwayat import.');
         }
 
@@ -607,7 +607,7 @@ class EmployeeSalaryWebImportController extends Controller
     public function sendEmail(Request $request, EmployeeSalary $employeeSalary): JsonResponse
     {
         $user = $request->user();
-        if (! $user?->isAdmin() && ! $user?->isStaff()) {
+        if (! $user?->canAccessPayroll()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -634,7 +634,7 @@ class EmployeeSalaryWebImportController extends Controller
     public function sendBulkEmail(Request $request): JsonResponse
     {
         $user = $request->user();
-        if (! $user?->isAdmin() && ! $user?->isStaff()) {
+        if (! $user?->canAccessPayroll()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -688,7 +688,7 @@ class EmployeeSalaryWebImportController extends Controller
     public function store(Request $request, EmployeeSalaryImportService $importer): RedirectResponse
     {
         $user = $request->user();
-        if (! $user?->isAdmin() && ! $user?->isStaff()) {
+        if (! $user?->canAccessPayroll()) {
             abort(403, 'Hanya admin dan staff yang dapat mengimpor gaji.');
         }
 
@@ -751,7 +751,7 @@ class EmployeeSalaryWebImportController extends Controller
     public function update(Request $request, EmployeeSalary $employeeSalary): RedirectResponse
     {
         $user = $request->user();
-        if (! $user?->isAdmin() && ! $user?->isStaff()) {
+        if (! $user?->canAccessPayroll()) {
             abort(403, 'Hanya admin dan staff yang dapat mengubah gaji.');
         }
 
@@ -776,7 +776,7 @@ class EmployeeSalaryWebImportController extends Controller
     public function destroy(Request $request, EmployeeSalary $employeeSalary): RedirectResponse
     {
         $user = $request->user();
-        if (! $user?->isAdmin() && ! $user?->isStaff()) {
+        if (! $user?->canAccessPayroll()) {
             abort(403, 'Hanya admin dan staff yang dapat menghapus gaji.');
         }
 
@@ -798,7 +798,7 @@ class EmployeeSalaryWebImportController extends Controller
     public function employeeHistory(Request $request, string $nik): Response
     {
         $user = $request->user();
-        if (! $user?->isAdmin() && ! $user?->isStaff()) {
+        if (! $user?->canAccessPayroll()) {
             abort(403, 'Hanya admin dan staff yang dapat melihat gaji.');
         }
 
@@ -855,7 +855,7 @@ class EmployeeSalaryWebImportController extends Controller
     public function bulkDestroy(Request $request): RedirectResponse
     {
         $user = $request->user();
-        if (! $user?->isAdmin() && ! $user?->isStaff()) {
+        if (! $user?->canAccessPayroll()) {
             abort(403, 'Hanya admin dan staff yang dapat menghapus gaji.');
         }
 

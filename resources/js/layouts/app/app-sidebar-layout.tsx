@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { PresenceProvider } from '@/contexts/presence-context';
 import { FlashMessage } from '@/components/flash-message';
 import { TemplateHeader } from '@/components/template-header';
 import { TemplateMobileNav } from '@/components/template-mobile-nav';
 import { TemplateSidebar } from '@/components/template-sidebar';
+import { PresenceProvider } from '@/contexts/presence-context';
 import type { AppLayoutProps } from '@/types';
 
 export default function AppSidebarLayout({

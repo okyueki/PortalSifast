@@ -41,6 +41,16 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'permissions' => [
+                'can_access_payroll' => $request->user()?->canAccessPayroll() ?? false,
+                'can_manage_payroll_access' => $request->user()?->canManagePayrollAccess() ?? false,
+                'simmutu' => [
+                    'can_view' => $request->user()?->canAccessSimmutuModule() ?? false,
+                    'can_manage' => $request->user()?->canManageMutu() ?? false,
+                    'can_input' => $request->user()?->canRecordMutuRealisation() ?? false,
+                    'can_manage_user_flags' => $request->user()?->canManageMutuAccess() ?? false,
+                ],
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [
                 'syncSuccess' => $request->session()->get('syncSuccess'),

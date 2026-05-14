@@ -26,7 +26,7 @@ class EmployeeSalaryController extends Controller
 
         // Jika NIK dari query/header beda dengan simrs_nik user, hanya admin/staff/service
         if ($nikParam !== '' && $user?->simrs_nik !== $nikParam) {
-            if (! $user?->isAdmin() && ! $user?->isStaff() && ! ($user?->isPayrollServiceIntegrationAccount() ?? false)) {
+            if (! $user?->canAccessPayroll() && ! ($user?->isPayrollServiceIntegrationAccount() ?? false)) {
                 return response()->json([
                     'message' => 'Anda tidak memiliki akses untuk melihat gaji pegawai lain.',
                 ], 403);
@@ -102,7 +102,7 @@ class EmployeeSalaryController extends Controller
         $nik = $user?->simrs_nik;
 
         // Admin, staff, atau service account bisa akses semua data
-        $canAccessAll = $user?->isAdmin() || $user?->isStaff() || ($user?->isPayrollServiceIntegrationAccount() ?? false);
+        $canAccessAll = $user?->canAccessPayroll() || ($user?->isPayrollServiceIntegrationAccount() ?? false);
 
         if (! $canAccessAll) {
             if (! is_string($nik) || trim($nik) === '') {
