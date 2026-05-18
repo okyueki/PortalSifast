@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ApiTicketController;
+use App\Http\Controllers\Api\EmergencyDashboardController;
 use App\Http\Controllers\Api\EmergencyReportController;
 use App\Http\Controllers\Api\EmployeeSalaryController;
 use App\Http\Controllers\Api\EmployeeSalaryImportController;
@@ -105,7 +106,18 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/operator/reports', [EmergencyReportController::class, 'operatorIndex']);
             Route::get('/operator/reports/{emergency_report}', [EmergencyReportController::class, 'operatorShow']);
             Route::patch('/operator/reports/{emergency_report}/respond', [EmergencyReportController::class, 'operatorRespond']);
+            Route::put('/operator/reports/{emergency_report}/respond', [EmergencyReportController::class, 'operatorRespond']);
+
+            // Staff mobile: Accept tugas panic
+            Route::post('/reports/{emergency_report}/accept', [EmergencyReportController::class, 'acceptReport']);
+
+            // Command Center Dashboard API (admin/staff only)
+            Route::get('/dashboard', [EmergencyDashboardController::class, 'index']);
+            Route::get('/stats', [EmergencyDashboardController::class, 'stats']);
         });
+
+        // Active officers tracking for Command Center
+        Route::get('/officer/active', [EmergencyDashboardController::class, 'activeOfficers']);
 
         // Officer Tracking (petugas emergency) — butuh token dari login officer
         // Throttle 20/min agar kirim lokasi tiap ~5 detik tidak kena block

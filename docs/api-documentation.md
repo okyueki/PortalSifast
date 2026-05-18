@@ -85,7 +85,18 @@ Lalu jalankan: `php artisan config:clear`
 
 ## 💰 Payroll / Slip Gaji
 
-Modul payroll untuk pegawai melihat data gaji. **Cara integrasi NIK disamakan dengan tiket** — lihat **[API-TICKETING.md](./API-TICKETING.md)** (bagian *"Login" dan Get Nama User*).
+Modul payroll untuk pegawai melihat data gaji. **Cara integrasi NIK disamakan dengan tiket** — lihat **[API-TICKETING.md](./API-TICKETING.md)** (bagian *”Login” dan Get Nama User*).
+
+### Status Publish
+
+Data payroll harus di-approve oleh staff payroll terlebih dahulu sebelum bisa diakses via API.
+
+| Status | Arti |
+|--------|------|
+| `draft` | Baru diimport, BELUM bisa diakses via API |
+| `published` | Sudah diapprove, BISA diakses via API |
+
+Staff payroll bisa approve via halaman `/payroll/import-history`.
 
 ### Satu cara yang disarankan (sama seperti tiket)
 
@@ -111,27 +122,67 @@ Tanpa `nik` di URL, token service **tidak** tahu pegawai mana → **422**. Itu b
 
 **Alternatif query/header** (setara `nik`): `?simrs_nik=...`, atau header `X-Sifast-Nik` / `X-Nik` jika tidak ingin NIK di URL.
 
-### Perhitungan `gaji_bersih` (sama logika slip cetak)
+### Nilai Total dari CSV (Priority)
 
-Backend memakai **`App\Support\PayrollSlipMath`**, diselaraskan dengan `resources/js/pages/payroll/print.tsx` (Jumlah Gaji Bersih):
+Display slip gaji mengambil **nilai total langsung dari CSV** (bukan dihitung ulang dari komponen):
 
-1. Jika **`pembulatan`** terisi (dari CSV) → `gaji_bersih` = nilai pembulatan (take-home resmi dari ekspor keuangan).
-2. Jika tidak → **`penerimaan`** dianggap angka take-home yang sama dipakai di slip (bukan “bruto” yang harus dikurangi pajak lagi).
-3. Jika keduanya tidak bisa di-parse → fallback **jumlah komponen pendapatan − jumlah komponen potongan** dari `raw_row` (key sama dengan `resources/js/pages/payroll/payroll-components.ts`).
+| Field | Sumber | Contoh |
+|-------|--------|--------|
+| `jumlah_tunjangan` | Kolom `Jumlah_Tunjangan` di CSV | `5399007` |
+| `jumlah` | Kolom `Jumlah` di CSV | `9308310` |
+| `jumlah_pot` | Kolom `Jumlah_Pot` di CSV | `2152714` |
+| `gaji_bersih` | Kolom `Pembulatan` di CSV | `7155596` |
 
-**Penting:** `pajak` dan `zakat` di level root record biasanya **duplikat ringkasan** dari kolom potongan; mereka **tidak** dikurangkan lagi dari `penerimaan` untuk `gaji_bersih` (menghindari double count dengan baris Pajak/Zakat di tabel potongan). Untuk tampilan slip di app kepegawaian, gunakan field **`gaji_bersih`** dan **`terbilang`** dari API — jangan menghitung ulang dengan rumus `penerimaan - pajak - zakat`.
+Ini penting karena ada kalanya `jumlah_tunjangan` di CSV **tidak sama** dengan penjumlahan komponen (ada item lain yang tidak di-breakdown).
 
-#### App mobile (Android/iOS): supaya rincian sama slip portal
+### Struktur Komponen CSV
 
-Data per baris ada di **`raw_row`** (string per kolom). **Jangan** mengelompokkan semua key ke “penerimaan”:** potongan memakai key terpisah** (mis. `jkk_pot`, `jht_pot`, bukan digabung ke daftar pendapatan). Acuan satu sumber untuk **label + key + section** (pendapatan vs potongan): berkas **`resources/js/pages/payroll/payroll-components.ts`** (dipakai slip cetak portal).
+#### Kolom Pendapatan
+| Key (raw_row) | Label di Slip | Contoh |
+|---------------|--------------|--------|
+| `gaji_pokok` | Gaji Pokok | `4291650` |
+| `keluarga` | Tunj. Keluarga | `858330` |
+| `fungsional` | Tunj. Fungsional | `100000` |
+| `struktural` | Tunj. Struktural | `750000` |
+| `operasional` | Tunj. Operasional | `1000000` |
+| `tunj_bpjs_tk` | BPJS Ketenagakerjaan | `382347` |
+| `bpjs_kes` | BPJS Kesehatan | `259756` |
+| `transport_spj` | Transport/SPJ | `525000` |
+| `jm_dokter` | Jasa Medis Dokter | `0` |
+| `lain_lain` | Lain-lain | `0` |
+| `lembur` | Lembur | `332300` |
+| `on_call` | On Call / Asisten | `0` |
+| `jkn` | Remunerasi JKN | `518593` |
+| `umum` | Remunerasi Umum | `250459` |
+| `jkn_susulan` | Remunerasi JKN Susulan | `26940` |
+| `jkn_susulan_l` | Remunerasi JKN Susulan L | `12935` |
 
-| Kesalahan umum | Yang benar |
-|----------------|------------|
-| Kartu “Total Penerimaan” diisi **`gaji_bersih`** (take-home) | **Total pendapatan kotor** = jumlah nilai komponen **section pendapatan** saja (atau jumlahkan key pendapatan di `raw_row` sesuai tabel di atas). **Take-home** = field **`gaji_bersih`**. |
-| JKK, JKM, JHT, JP ditampilkan sebagai baris pendapatan | Di slip portal, itu **potongan** (key `jkk_pot`, `jkm_pot`, `jht_pot`, `jp_pot`). |
-| “Total potongan” hanya pajak (`156.819`) | **Jumlah potongan** = jumlah semua komponen **section potongan** (slip: ± **1.453.850** untuk contoh yang sama). |
-| Menggandakan baris (Jht + Jht Pot + Jht Pot 2) tanpa aturan CSV | Satu slip = **satu baris per key** di `raw_row`; jangan menggandakan subtotal yang tidak ada di data. |
-| `masa_kerja` dihitung ulang di HP dengan tanggal hari ini | Pakai **`masa_kerja`** dari **`GET /api/sifast/payroll/{id}`** (referensi tanggal = **`period_start`** periode slip, bukan “hari ini”). |
+#### Kolom Potongan
+| Key (raw_row) | Label di Slip | Contoh |
+|---------------|--------------|--------|
+| `pot_bpjs_tk` | BPJS Ketenagakerjaan | `382347` |
+| `bpjs_kes_k` | BPJS Kesehatan | `259756` |
+| `jht_i` | Jaminan Hari Tua | `122547` |
+| `jp_i` | Jaminan Pensiun | `61274` |
+| `bpjs_kes_i` | BPJS Kesehatan | `64939` |
+| `bpjs_kes_tidak_ditanggung` | BPJS Kes tdk di tgg | `0` |
+| `matan` | Matan | `15000` |
+| `lazismu` | Lazismu | `15000` |
+| `obat2an` | Obat/Jasmed/Tindakan | `0` |
+| `hutang_bpjs` | Hutang BPJS | `0` |
+| `hutang_seragam` | Hutang Seragam | `0` |
+| `ikkm` | IKKM | `50000` |
+| `lain_pot` | Lain-lain | `0` |
+| `pajak` | Pajak (PPh 21) | `1181851` |
+| `zakat` | Zakat | `0` |
+
+#### Total dari CSV
+| Key (raw_row) | Label di Slip | Contoh |
+|---------------|--------------|--------|
+| `jumlah_tunjangan` | Jumlah Tunjangan | `5399007` |
+| `jumlah` | Jumlah Gaji | `9308310` |
+| `jumlah_pot` | Jumlah Potongan | `2152714` |
+| `pembulatan` | Gaji Bersih | `7155596` |
 
 ---
 
@@ -149,12 +200,12 @@ Data per baris ada di **`raw_row`** (string per kolom). **Jangan** mengelompokka
 
 #### Contoh cURL (disarankan — sama pola tiket)
 ```bash
-curl -G "https://portalsifast.rsaisyiyahsitifatimah.com/api/sifast/payroll" \
-  --data-urlencode "nik=03.09.07.1998" \
-  --data-urlencode "page=1" \
-  --data-urlencode "per_page=12" \
-  -H "Authorization: Bearer {token_service}" \
-  -H "Accept: application/json"
+curl -G “https://portalsifast.rsaisyiyahsitifatimah.com/api/sifast/payroll” \
+  --data-urlencode “nik=03.09.07.1998” \
+  --data-urlencode “page=1” \
+  --data-urlencode “per_page=12” \
+  -H “Authorization: Bearer {token_service}” \
+  -H “Accept: application/json”
 ```
 
 #### Skenario lanjutan (bukan wajib untuk app kepegawaian)
@@ -163,6 +214,7 @@ curl -G "https://portalsifast.rsaisyiyahsitifatimah.com/api/sifast/payroll" \
 |----------|----------|
 | Token hasil **`POST /api/login`** dan user di DB sudah punya **`simrs_nik`** | Boleh **tanpa** `?nik` — backend pakai NIK dari profil token. |
 | User belum punya `simrs_nik` di DB | Backend **bisa** mengisi otomatis dari email SIMRS (`petugas`/`dokter`) saat login / `/user` / payroll — tetap disarankan app **tetap kirim `?nik`** agar konsisten dengan tiket. |
+| Data belum di-publish | Response **403** - “Data payroll ini belum dipublish dan belum bisa diakses.” |
 
 ---
 
@@ -171,41 +223,53 @@ Struktur mengikuti `LengthAwarePaginator` (field `data`, `links`, `current_page`
 
 ```json
 {
-  "current_page": 1,
-  "data": [
+  “current_page”: 1,
+  “data”: [
     {
-      "id": 11,
-      "period_start": "2026-02-01",
-      "period_label": "Februari 2026",
-      "simrs_nik": "03.09.07.1998",
-      "employee_name": "Sri Rahmawati, SE",
-      "unit": "MNG",
-      "npwp": "665022430603000",
-      "penerimaan": "8025046.00",
-      "pembulatan": "8025046.00",
-      "pajak": "156819.00",
-      "zakat": null,
-      "gaji_bersih": 8025046
+      “id”: 78,
+      “period_start”: “2026-02-01”,
+      “period_label”: “Februari 2026”,
+      “simrs_nik”: “26.01.03.2009”,
+      “employee_name”: “apt.Rika Rosalia S.Farm,M.Farm”,
+      “unit”: “FARM”,
+      “npwp”: null,
+      “phone”: null,
+      “ref_no”: 9,
+      “salary_no”: 9,
+      “penerimaan”: “7155596.00”,
+      “pembulatan”: “7155596.00”,
+      “pajak”: “1181851.00”,
+      “zakat”: null,
+      “gaji_bersih”: 7155596,
+      “status”: “published”
     }
   ],
-  "first_page_url": "...",
-  "last_page": 1,
-  "links": [],
-  "next_page_url": null,
-  "path": "...",
-  "per_page": 15,
-  "prev_page_url": null,
-  "to": 1,
-  "total": 1
+  “first_page_url”: “...”,
+  “last_page”: 1,
+  “links”: [],
+  “next_page_url”: null,
+  “path”: “...”,
+  “per_page”: 15,
+  “prev_page_url”: null,
+  “to”: 1,
+  “total”: 1
 }
 ```
+
+#### Response `403 Forbidden` (belum di-publish)
+```json
+{
+  “message”: “Data payroll ini belum dipublish dan belum bisa diakses.”
+}
+```
+Solusi: Approve import di `/payroll/import-history` melalui staff payroll.
 
 #### Response `422` (lupa `nik` dengan token service)
 ```json
 {
-  "message": "Parameter nik wajib diisi atau akun Anda belum terhubung dengan NIK kepegawaian.",
-  "hint": "Sama seperti tiket: kirim ?nik= (atau header X-Sifast-Nik) dengan NIK dari session kepegawaian.",
-  "example_query": "/api/sifast/payroll?nik=03.09.07.1998&page=1&per_page=12"
+  “message”: “Parameter nik wajib diisi atau akun Anda belum terhubung dengan NIK kepegawaian.”,
+  “hint”: “Sama seperti tiket: kirim ?nik= (atau header X-Sifast-Nik) dengan NIK dari session kepegawaian.”,
+  “example_query”: “/api/sifast/payroll?nik=03.09.07.1998&page=1&per_page=12”
 }
 ```
 
@@ -219,7 +283,7 @@ Perbaikan: tambahkan **`?nik=`** seperti di [API-TICKETING.md](./API-TICKETING.m
 
 **GET** `/api/sifast/payroll/{id}`
 
-Menampilkan detail lengkap slip gaji termasuk komponen pendapatan dan potongan dari `raw_row`.
+Menampilkan detail lengkap slip gaji termasuk komponen pendapatan dan potongan.
 
 #### Akses
 | Role | Akses |
@@ -230,58 +294,122 @@ Menampilkan detail lengkap slip gaji termasuk komponen pendapatan dan potongan d
 
 #### Contoh cURL
 ```bash
-curl -X GET "https://portalsifast.rsaisyiyahsitifatimah.com/api/sifast/payroll/11" \
-  -H "Authorization: Bearer {token}" \
-  -H "Accept: application/json"
+curl -X GET “https://portalsifast.rsaisyiyahsitifatimah.com/api/sifast/payroll/78” \
+  -H “Authorization: Bearer {token}” \
+  -H “Accept: application/json”
 ```
 
 #### Response `200 OK`
 ```json
 {
-  "data": {
-    "id": 11,
-    "period_start": "2026-02-01",
-    "period_label": "Februari 2026",
-    "simrs_nik": "03.09.07.1998",
-    "employee_name": "Sri Rahmawati, SE",
-    "unit": "MNG",
-    "npwp": "665022430603000",
-    "penerimaan": "8025046.00",
-    "pembulatan": "8025046.00",
-    "pajak": "156819.00",
-    "zakat": null,
-    "gaji_bersih": 8025046,
-    "terbilang": "Delapan Juta Dua Puluh Lima Ribu Empat Puluh Enam Rupiah",
-    "masa_kerja": {
-      "years": 5,
-      "months": 3,
-      "days": 12
+  “data”: {
+    “id”: 78,
+    “period_start”: “2026-02-01”,
+    “period_label”: “Februari 2026”,
+    “simrs_nik”: “26.01.03.2009”,
+    “employee_name”: “apt.Rika Rosalia S.Farm,M.Farm”,
+    “unit”: “FARM”,
+    “npwp”: null,
+    “phone”: null,
+    “ref_no”: 9,
+    “salary_no”: 9,
+    “penerimaan”: “7155596.00”,
+    “pembulatan”: “7155596.00”,
+    “pajak”: “1181851.00”,
+    “zakat”: null,
+    “gaji_bersih”: 7155596,
+    “terbilang”: “Tujuh Juta Seratus Lima Puluh Lima Ribu Lima Ratus Sembilan Puluh Enam Rupiah”,
+    “masa_kerja”: {
+      “years”: 16,
+      “months”: 7,
+      “days”: 0
     },
-    "raw_row": {
-      "nik": "03.09.07.1998",
-      "nama": "Sri Rahmawati, SE",
-      "gaji_pokok": "5011380",
-      "keluarga": "501138",
-      "pajak": "156819",
-      "gol": "4",
-      "gol_abc": "A",
-      "tmk": "Jumat, 09 Oktober 1998"
+    “status”: “published”,
+    “published_at”: “2026-05-16T10:30:00Z”,
+    “published_by”: 1,
+    // Komponen Pendapatan
+    “gaji_pokok”: “4291650.00”,
+    “keluarga”: “858330.00”,
+    “fungsional”: “100000.00”,
+    “struktural”: “750000.00”,
+    “operasional”: “1000000.00”,
+    “tunj_bpjs_tk”: “382347.00”,
+    “bpjs_kes”: “259756.00”,
+    “transport_spj”: “525000.00”,
+    “jm_dokter”: “0.00”,
+    “lain_lain”: “0.00”,
+    “lembur”: “332300.00”,
+    “on_call”: “0.00”,
+    “jkn”: “518593.00”,
+    “umum”: “250459.00”,
+    “jkn_susulan”: “26940.00”,
+    “jkn_susulan_l”: “12935.00”,
+    // Komponen Potongan
+    “pot_bpjs_tk”: “382347.00”,
+    “bpjs_kes_k”: “259756.00”,
+    “jht_i”: “122547.00”,
+    “jp_i”: “61274.00”,
+    “bpjs_kes_i”: “64939.00”,
+    “bpjs_kes_tidak_ditanggung”: “0.00”,
+    “matan”: “15000.00”,
+    “lazismu”: “15000.00”,
+    “obat2an”: “0.00”,
+    “hutang_bpjs”: “0.00”,
+    “hutang_seragam”: “0.00”,
+    “ikkm”: “50000.00”,
+    “lain_pot”: “0.00”,
+    // Total dari CSV
+    “jumlah_tunjangan”: “5399007.00”,
+    “jumlah”: “9308310.00”,
+    “jumlah_pot”: “2152714.00”,
+    // Raw data (semua kolom CSV asli)
+    “raw_row”: {
+      “no_ref”: “9”,
+      “no_gaji”: “9”,
+      “nama”: “apt.Rika Rosalia S.Farm,M.Farm”,
+      “nik”: “26.01.03.2009”,
+      “gaji_pokok”: “4.291.650”,
+      “keluarga”: “ 858.330 “,
+      “jkk”: “ 14.706 “,
+      “jkm”: “ 18.382 “,
+      “jht”: “ 226.712 “,
+      “jp”: “ 122.547 “,
+      “tunj_bpjs_tk”: “ 382.347 “,
+      “bpjs_kes”: “ 259.756 “,
+      “lembur”: “ 332.300 “,
+      “jkn_februari_2026”: “ 518.593 “,
+      “umum_maret_2026”: “ 250.459 “,
+      “pajak”: “1.181.851”,
+      “jumlah_tunjangan”: “ 5.399.007 “,
+      “jumlah”: “ 9.308.310 “,
+      “jumlah_pot”: “ 2.152.714 “,
+      “penerimaan”: “Rp7.155.596”,
+      “pembulatan”: “Rp7.155.596”
     }
   }
 }
 ```
 
-#### Response Error `403 Forbidden`
+#### Catatan Penting untuk Frontend
+
+1. **Gunakan kolom langsung**, bukan hitung ulang dari komponen
+2. **Jumlah Tunjangan**: pakai `jumlah_tunjangan`, bukan jumlah komponen
+3. **Jumlah Gaji**: pakai `jumlah`, bukan penjumlahan manual
+4. **Jumlah Potongan**: pakai `jumlah_pot`
+5. **Gaji Bersih**: pakai `pembulatan` atau `gaji_bersih`
+6. **Terbilang**: dari field `terbilang` (sudah di-generate backend)
+
+#### Response Error `403 Forbidden` (belum publish)
 ```json
 {
-  "message": "Data ini bukan milik Anda."
+  “message”: “Data payroll ini belum dipublish dan belum bisa diakses.”
 }
 ```
 
 #### Response Error `422 Unprocessable Entity`
 ```json
 {
-  "message": "Akun Anda belum terhubung dengan NIK kepegawaian."
+  “message”: “Akun Anda belum terhubung dengan NIK kepegawaian.”
 }
 ```
 
@@ -291,7 +419,9 @@ curl -X GET "https://portalsifast.rsaisyiyahsitifatimah.com/api/sifast/payroll/1
 
 **POST** `/api/sifast/payroll/import`
 
-Endpoint untuk import data gaji dari file CSV. Hanya dapat diakses oleh user dengan role `admin` atau `staff`.
+Endpoint untuk import data gaji dari file CSV. Hanya dapat diakses oleh user dengan role `admin` atau staff dengan `can_access_payroll = true`.
+
+**Import menggunakan status `draft`** - data belum bisa diakses via API sampai di-approve.
 
 #### Request Headers
 ```
@@ -307,29 +437,29 @@ Authorization: Bearer {token}
 
 #### Contoh cURL
 ```bash
-curl -X POST "https://portalsifast.rsaisyiyahsitifatimah.com/api/sifast/payroll/import" \
-  -H "Authorization: Bearer {token}" \
-  -F "period=2026-02" \
-  -F "file=@/path/to/gaji.csv"
+curl -X POST “https://portalsifast.rsaisyiyahsitifatimah.com/api/sifast/payroll/import” \
+  -H “Authorization: Bearer {token}” \
+  -F “period=2026-02” \
+  -F “file=@/path/to/gaji.csv”
 ```
 
 #### Response `200 OK`
 ```json
 {
-  "success": true,
-  "message": "Import gaji berhasil. Imported: 150, Skipped: 2.",
-  "data": {
-    "imported": 150,
-    "skipped": 2,
-    "total_rows": 152,
-    "warnings": [
+  “success”: true,
+  “message”: “Import gaji berhasil. Imported: 150, Skipped: 2.”,
+  “data”: {
+    “imported”: 150,
+    “skipped”: 2,
+    “total_rows”: 152,
+    “warnings”: [
       {
-        "nik": "01.02.03.2000",
-        "nama": "John Doe",
-        "issues": ["Penerimaan bernilai 0"]
+        “nik”: “01.02.03.2000”,
+        “nama”: “John Doe”,
+        “issues”: [“Penerimaan bernilai 0”]
       }
     ],
-    "import_id": 5
+    “import_id”: 5
   }
 }
 ```
@@ -337,16 +467,16 @@ curl -X POST "https://portalsifast.rsaisyiyahsitifatimah.com/api/sifast/payroll/
 #### Validation Rules (Automatic Warning Detection)
 | Kondisi | Warning |
 |---|---|
-| `employee_name` kosong | "Nama pegawai kosong" |
-| `penerimaan` = 0 | "Penerimaan bernilai 0" |
-| `penerimaan` < 30% rata-rata | "Penerimaan di bawah rata-rata (outlier rendah)" |
-| `penerimaan` > 250% rata-rata | "Penerimaan di atas rata-rata (outlier tinggi)" |
-| `pajak` > 50% penerimaan | "Pajak melebihi 50% dari penerimaan" |
+| `employee_name` kosong | “Nama pegawai kosong” |
+| `penerimaan` = 0 | “Penerimaan bernilai 0” |
+| `penerimaan` < 30% rata-rata | “Penerimaan di bawah rata-rata (outlier rendah)” |
+| `penerimaan` > 250% rata-rata | “Penerimaan di atas rata-rata (outlier tinggi)” |
+| `pajak` > 50% penerimaan | “Pajak melebihi 50% dari penerimaan” |
 
 #### Response Error `403 Forbidden`
 ```json
 {
-  "message": "Hanya admin dan staff yang dapat mengimpor gaji."
+  “message”: “Hanya admin dan staff yang dapat mengimpor gaji.”
 }
 ```
 
@@ -354,23 +484,22 @@ curl -X POST "https://portalsifast.rsaisyiyahsitifatimah.com/api/sifast/payroll/
 
 ### D. Format CSV untuk Import
 
-#### Header CSV yang Direkomendasikan
+#### Header CSV yang Didukung
 ```csv
-nik,nama,unit,npwp,gaji_pokok,tunjangan_tetap,tunjangan_fungsional,penerimaan,pajak,zakat,pembulatan
+No. Ref;No. Gaji;Nama;NIK;Gaji Pokok;Keluarga;Fungsional;Struktural;Operasional;JKK;JKM;JHT;JP;TUNJ_BPJS_TK;BPJS KES;Transt/SPJ/Komunikasi;JM Dokter;Lain2/Bonus;Lembur;On Call;JKN Februari 2026;Umum Maret 2026;JKN Susulan;JKN Susulan_L;Jumlah;Jumlah_Tunjangan;Zakat;Pajak;JKK_K;JKM_K;JHT_K;JP_K;POT_BPJS_TK;BPJS_KES_K;JHT_I;JP_I;BPJS_Kes_I;BPJS_Kes_tdk_di_tgg;Matan;Lazismu;Obat2an/R;Hutang BPJS;Hutang Seragam;IKKM;Lain - lain;Jumlah_Pot;Penerimaan;Pembulatan
 ```
 
 #### Contoh Data
 ```csv
-nik,nama,unit,npwp,gaji_pokok,tunjangan_tetap,penerimaan,pajak,zakat
-03.09.07.1998,Sri Rahmawati,MNG,665022430603000,3500000,1500000,8025046,156819,0
-13.28.04.2007,dr. M. Hud Suhargono,MNG,123456789012345,5000000,2000000,14851907,1180207,440610
+9;9;apt.Rika Rosalia S.Farm,M.Farm;26.01.03.2009;4.291.650;858.330;100.000;750.000;1.000.000;14.706;18.382;226.712;122.547;382.347;259.756;525.000;0;0;332.300;-;518.593;250.459;26.940;12.935;9.308.310;5.399.007;-;1.181.851;14.706;18.382;226.712;122.547;382.347;259.756;122.547;61.274;64.939;-;15.000;15.000;-;-;-;50.000;-;2.152.714;Rp7.155.596;Rp7.155.596
 ```
 
 #### Catatan Format
-- **Delimiter**: Otomatis mendeteksi `,` atau `;`
-- **Encoding**: UTF-8
-- **Angka**: Tanpa separator ribuan atau dengan format `1.234.567`
+- **Delimiter**: Otomatis mendeteksi `;` (semi-colon)
+- **Encoding**: UTF-8 (perangana BOM otomatis dihapus)
+- **Angka**: Format Indonesia (`1.234.567`) atau `Rp1.234.567`
 - **Header**: Case-insensitive, spasi dikonversi ke underscore
+- **Kolom Opsional**: NIK kosong akan di-skip
 
 ---
 

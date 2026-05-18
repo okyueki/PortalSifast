@@ -42,4 +42,8 @@ return [
         'tickets_group_chat_id' => env('TELEGRAM_TICKETS_GROUP_CHAT_ID'),
     ],
 
+    'firebase' => [
+        'credentials' => env('FIREBASE_CREDENTIALS'),
+    ],
+
 ];

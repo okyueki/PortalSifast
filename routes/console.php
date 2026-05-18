@@ -9,3 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('tickets:auto-close')->daily();
+
+// Check pending panic reports every 2 minutes
+Schedule::command('panic:check-pending')->everyTwoMinutes();

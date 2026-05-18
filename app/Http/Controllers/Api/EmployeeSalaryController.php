@@ -45,6 +45,7 @@ class EmployeeSalaryController extends Controller
 
         $query = EmployeeSalary::query()
             ->where('simrs_nik', $nik)
+            ->where('status', 'published')  // Hanya data yang sudah di-publish
             ->orderBy('period_start', 'desc');
 
         if ($period !== '') {
@@ -104,6 +105,13 @@ class EmployeeSalaryController extends Controller
         // Admin, staff, atau service account bisa akses semua data
         $canAccessAll = $user?->canAccessPayroll() || ($user?->isPayrollServiceIntegrationAccount() ?? false);
 
+        // Cek apakah data sudah publish (status = 'published')
+        if ($employeeSalary->status !== 'published') {
+            return response()->json([
+                'message' => 'Data payroll ini belum dipublish dan belum bisa diakses.',
+            ], 403);
+        }
+
         if (! $canAccessAll) {
             if (! is_string($nik) || trim($nik) === '') {
                 return response()->json([
@@ -136,11 +144,15 @@ class EmployeeSalaryController extends Controller
             'employee_name' => $salary->employee_name,
             'unit' => $salary->unit,
             'npwp' => $salary->npwp,
+            'phone' => $salary->phone,
+            'ref_no' => $salary->ref_no,
+            'salary_no' => $salary->salary_no,
             'penerimaan' => $salary->penerimaan,
             'pembulatan' => $salary->pembulatan,
             'pajak' => $salary->pajak,
             'zakat' => $salary->zakat,
             'gaji_bersih' => $gajiBersih,
+            'status' => $salary->status,
         ];
     }
 
@@ -161,6 +173,9 @@ class EmployeeSalaryController extends Controller
             'employee_name' => $salary->employee_name,
             'unit' => $salary->unit,
             'npwp' => $salary->npwp,
+            'phone' => $salary->phone,
+            'ref_no' => $salary->ref_no,
+            'salary_no' => $salary->salary_no,
             'penerimaan' => $salary->penerimaan,
             'pembulatan' => $salary->pembulatan,
             'pajak' => $salary->pajak,
@@ -168,6 +183,45 @@ class EmployeeSalaryController extends Controller
             'gaji_bersih' => $gajiBersih,
             'terbilang' => $this->terbilang($gajiBersih),
             'masa_kerja' => $masaKerja,
+            'status' => $salary->status,
+            'published_at' => $salary->published_at?->toIso8601String(),
+            'published_by' => $salary->published_by,
+            // Komponen Pendapatan
+            'gaji_pokok' => $salary->gaji_pokok,
+            'keluarga' => $salary->keluarga,
+            'fungsional' => $salary->fungsional,
+            'struktural' => $salary->struktural,
+            'operasional' => $salary->operasional,
+            'tunj_bpjs_tk' => $salary->tunj_bpjs_tk,
+            'bpjs_kes' => $salary->bpjs_kes,
+            'transport_spj' => $salary->transport_spj,
+            'jm_dokter' => $salary->jm_dokter,
+            'lain_lain' => $salary->lain_lain,
+            'lembur' => $salary->lembur,
+            'on_call' => $salary->on_call,
+            'jkn' => $salary->jkn,
+            'umum' => $salary->umum,
+            'jkn_susulan' => $salary->jkn_susulan,
+            'jkn_susulan_l' => $salary->jkn_susulan_l,
+            // Komponen Potongan
+            'pot_bpjs_tk' => $salary->pot_bpjs_tk,
+            'bpjs_kes_k' => $salary->bpjs_kes_k,
+            'jht_i' => $salary->jht_i,
+            'jp_i' => $salary->jp_i,
+            'bpjs_kes_i' => $salary->bpjs_kes_i,
+            'bpjs_kes_tidak_ditanggung' => $salary->bpjs_kes_tidak_ditanggung,
+            'matan' => $salary->matan,
+            'lazismu' => $salary->lazismu,
+            'obat2an' => $salary->obat2an,
+            'hutang_bpjs' => $salary->hutang_bpjs,
+            'hutang_seragam' => $salary->hutang_seragam,
+            'ikkm' => $salary->ikkm,
+            'lain_pot' => $salary->lain_pot,
+            // Total dari CSV
+            'jumlah_tunjangan' => $salary->jumlah_tunjangan,
+            'jumlah' => $salary->jumlah,
+            'jumlah_pot' => $salary->jumlah_pot,
+            // Raw data (semua kolom CSV asli)
             'raw_row' => $salary->raw_row,
         ];
     }

@@ -75,6 +75,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('emergency-reports/{emergency_report}', [EmergencyReportWebController::class, 'show'])->name('emergency-reports.show');
     Route::patch('emergency-reports/{emergency_report}/respond', [EmergencyReportWebController::class, 'respond'])->name('emergency-reports.respond');
 
+    // Staff Mobile - Panic Button Acceptance
+    Route::get('panic-staff', [EmergencyReportWebController::class, 'staff'])->name('emergency-reports.staff');
+
     // Inventaris CRUD
     Route::resource('inventaris', InventarisController::class)->parameters(['inventaris' => 'inventaris:no_inventaris']);
 

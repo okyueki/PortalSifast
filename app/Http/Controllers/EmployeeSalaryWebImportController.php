@@ -8,6 +8,7 @@ use App\Models\PayrollAuditLog;
 use App\Models\PayrollImport;
 use App\Models\User;
 use App\Services\EmployeeSalaryImportService;
+use App\Services\FcmNotificationService;
 use App\Support\PayrollSlipMath;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -330,13 +331,62 @@ class EmployeeSalaryWebImportController extends Controller
                 'employee_name' => $employeeSalary->employee_name,
                 'unit' => $employeeSalary->unit,
                 'npwp' => $employeeSalary->npwp ?? $employeeSalary->pegawai?->npwp,
+                'phone' => $employeeSalary->phone,
+                'ref_no' => $employeeSalary->ref_no,
+                'salary_no' => $employeeSalary->salary_no,
                 'penerimaan' => $employeeSalary->penerimaan,
                 'pembulatan' => $employeeSalary->pembulatan,
                 'pajak' => $employeeSalary->pajak,
                 'zakat' => $employeeSalary->zakat,
-                'terbilang' => $this->spellCurrency((string) $gajiBersih),
+                'denominados' => $this->spellCurrency((string) $gajiBersih),
                 'masa_kerja' => $masaKerja,
-                'raw_row' => $employeeSalary->raw_row,
+                // Komponen Pendapatan
+                'gaji_pokok' => $employeeSalary->gaji_pokok,
+                'keluarga' => $employeeSalary->keluarga,
+                'fungsional' => $employeeSalary->fungsional,
+                'struktural' => $employeeSalary->struktural,
+                'operasional' => $employeeSalary->operasional,
+                'transport_spj' => $employeeSalary->transport_spj,
+                'jm_dokter' => $employeeSalary->jm_dokter,
+                'lembur' => $employeeSalary->lembur,
+                'on_call' => $employeeSalary->on_call,
+                'lain_lain' => $employeeSalary->lain_lain,
+                // JKN
+                'jkn' => $employeeSalary->jkn,
+                'umum' => $employeeSalary->umum,
+                'jkn_susulan' => $employeeSalary->jkn_susulan,
+                'jkn_susulan_l' => $employeeSalary->jkn_susulan_l,
+                // BPJS TK Perusahaan
+                'jkk' => $employeeSalary->jkk,
+                'jkm' => $employeeSalary->jkm,
+                'jht' => $employeeSalary->jht,
+                'jp' => $employeeSalary->jp,
+                'tunj_bpjs_tk' => $employeeSalary->tunj_bpjs_tk,
+                'bpjs_kes' => $employeeSalary->bpjs_kes,
+                // BPJS TK Karyawan
+                'jkk_k' => $employeeSalary->jkk_k,
+                'jkm_k' => $employeeSalary->jkm_k,
+                'jht_k' => $employeeSalary->jht_k,
+                'jp_k' => $employeeSalary->jp_k,
+                'pot_bpjs_tk' => $employeeSalary->pot_bpjs_tk,
+                'bpjs_kes_k' => $employeeSalary->bpjs_kes_k,
+                // Iuran
+                'jht_i' => $employeeSalary->jht_i,
+                'jp_i' => $employeeSalary->jp_i,
+                'bpjs_kes_i' => $employeeSalary->bpjs_kes_i,
+                'bpjs_kes_tidak_ditanggung' => $employeeSalary->bpjs_kes_tidak_ditanggung,
+                // Potongan Lain
+                'matan' => $employeeSalary->matan,
+                'lazismu' => $employeeSalary->lazismu,
+                'obat2an' => $employeeSalary->obat2an,
+                'hutang_bpjs' => $employeeSalary->hutang_bpjs,
+                'hutang_seragam' => $employeeSalary->hutang_seragam,
+                'ikkm' => $employeeSalary->ikkm,
+                'lain_pot' => $employeeSalary->lain_pot,
+                // Totals
+                'jumlah' => $employeeSalary->jumlah,
+                'jumlah_tunjangan' => $employeeSalary->jumlah_tunjangan,
+                'jumlah_pot' => $employeeSalary->jumlah_pot,
             ],
         ]);
     }
@@ -361,13 +411,62 @@ class EmployeeSalaryWebImportController extends Controller
                 'employee_name' => $employeeSalary->employee_name,
                 'unit' => $employeeSalary->unit,
                 'npwp' => $employeeSalary->npwp ?? $employeeSalary->pegawai?->npwp,
+                'phone' => $employeeSalary->phone,
+                'ref_no' => $employeeSalary->ref_no,
+                'salary_no' => $employeeSalary->salary_no,
                 'penerimaan' => $employeeSalary->penerimaan,
                 'pembulatan' => $employeeSalary->pembulatan,
                 'pajak' => $employeeSalary->pajak,
                 'zakat' => $employeeSalary->zakat,
-                'terbilang' => $this->spellCurrency((string) $gajiBersih),
+                'denominados' => $this->spellCurrency((string) $gajiBersih),
                 'masa_kerja' => $masaKerja,
-                'raw_row' => $employeeSalary->raw_row,
+                // Komponen Pendapatan
+                'gaji_pokok' => $employeeSalary->gaji_pokok,
+                'keluarga' => $employeeSalary->keluarga,
+                'fungsional' => $employeeSalary->fungsional,
+                'struktural' => $employeeSalary->struktural,
+                'operasional' => $employeeSalary->operasional,
+                'transport_spj' => $employeeSalary->transport_spj,
+                'jm_dokter' => $employeeSalary->jm_dokter,
+                'lembur' => $employeeSalary->lembur,
+                'on_call' => $employeeSalary->on_call,
+                'lain_lain' => $employeeSalary->lain_lain,
+                // JKN
+                'jkn' => $employeeSalary->jkn,
+                'umum' => $employeeSalary->umum,
+                'jkn_susulan' => $employeeSalary->jkn_susulan,
+                'jkn_susulan_l' => $employeeSalary->jkn_susulan_l,
+                // BPJS TK Perusahaan
+                'jkk' => $employeeSalary->jkk,
+                'jkm' => $employeeSalary->jkm,
+                'jht' => $employeeSalary->jht,
+                'jp' => $employeeSalary->jp,
+                'tunj_bpjs_tk' => $employeeSalary->tunj_bpjs_tk,
+                'bpjs_kes' => $employeeSalary->bpjs_kes,
+                // BPJS TK Karyawan
+                'jkk_k' => $employeeSalary->jkk_k,
+                'jkm_k' => $employeeSalary->jkm_k,
+                'jht_k' => $employeeSalary->jht_k,
+                'jp_k' => $employeeSalary->jp_k,
+                'pot_bpjs_tk' => $employeeSalary->pot_bpjs_tk,
+                'bpjs_kes_k' => $employeeSalary->bpjs_kes_k,
+                // Iuran
+                'jht_i' => $employeeSalary->jht_i,
+                'jp_i' => $employeeSalary->jp_i,
+                'bpjs_kes_i' => $employeeSalary->bpjs_kes_i,
+                'bpjs_kes_tidak_ditanggung' => $employeeSalary->bpjs_kes_tidak_ditanggung,
+                // Potongan Lain
+                'matan' => $employeeSalary->matan,
+                'lazismu' => $employeeSalary->lazismu,
+                'obat2an' => $employeeSalary->obat2an,
+                'hutang_bpjs' => $employeeSalary->hutang_bpjs,
+                'hutang_seragam' => $employeeSalary->hutang_seragam,
+                'ikkm' => $employeeSalary->ikkm,
+                'lain_pot' => $employeeSalary->lain_pot,
+                // Totals
+                'jumlah' => $employeeSalary->jumlah,
+                'jumlah_tunjangan' => $employeeSalary->jumlah_tunjangan,
+                'jumlah_pot' => $employeeSalary->jumlah_pot,
             ],
         ]);
     }
@@ -531,8 +630,8 @@ class EmployeeSalaryWebImportController extends Controller
     public function approveImport(Request $request, PayrollImport $payrollImport): RedirectResponse
     {
         $user = $request->user();
-        if (! $user?->isAdmin()) {
-            abort(403, 'Hanya admin yang dapat menyetujui payroll.');
+        if (! $user?->canAccessPayroll()) {
+            abort(403, 'Hanya staff payroll yang dapat menyetujui payroll.');
         }
 
         if (! $payrollImport->isPendingApproval()) {
@@ -552,24 +651,51 @@ class EmployeeSalaryWebImportController extends Controller
             'approval_notes' => $validated['notes'] ?? null,
         ]);
 
+        // Publish semua salary yang terkait dengan import ini
+        $salaries = EmployeeSalary::query()
+            ->where('import_id', $payrollImport->id)
+            ->where('status', '!=', 'published')
+            ->update([
+                'status' => 'published',
+                'published_at' => now(),
+                'published_by' => $user->id,
+            ]);
+
         PayrollAuditLog::log(
             'approved',
             $payrollImport,
             ['approval_status' => 'pending'],
             ['approval_status' => 'approved'],
-            "Menyetujui import payroll periode {$payrollImport->period_start?->translatedFormat('F Y')}"
+            "Menyetujui import payroll periode {$payrollImport->period_start?->translatedFormat('F Y')} - data di-publish"
         );
+
+        // Notify employees about published payroll
+        $publishedSalaries = EmployeeSalary::where('import_id', $payrollImport->id)->get();
+        $periodLabel = $payrollImport->period_start?->translatedFormat('F Y') ?? '';
+        foreach ($publishedSalaries->groupBy('simrs_nik') as $nik => $salaryGroup) {
+            $firstSalary = $salaryGroup->first();
+            app(FcmNotificationService::class)->sendToNik(
+                $nik,
+                'Gaji Published',
+                "Slip gaji {$periodLabel} sudah tersedia dan bisa dilihat.",
+                [
+                    'type' => 'payroll_published',
+                    'period' => $payrollImport->period_start?->toDateString(),
+                    'salary_id' => $firstSalary->id,
+                ]
+            );
+        }
 
         return redirect()
             ->route('payroll.import-history')
-            ->with('success', "Import {$payrollImport->period_start?->translatedFormat('F Y')} berhasil disetujui.");
+            ->with('success', "Import {$payrollImport->period_start?->translatedFormat('F Y')} berhasil disetujui dan dipublish.");
     }
 
     public function rejectImport(Request $request, PayrollImport $payrollImport): RedirectResponse
     {
         $user = $request->user();
-        if (! $user?->isAdmin()) {
-            abort(403, 'Hanya admin yang dapat menolak payroll.');
+        if (! $user?->canAccessPayroll()) {
+            abort(403, 'Hanya staff payroll yang dapat menolak payroll.');
         }
 
         if (! $payrollImport->isPendingApproval()) {

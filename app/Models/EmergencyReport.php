@@ -68,6 +68,7 @@ class EmergencyReport extends Model
             'longitude' => 'decimal:8',
             'responded_at' => 'datetime',
             'resolved_at' => 'datetime',
+            'arrived_at' => 'datetime',
         ];
     }
 

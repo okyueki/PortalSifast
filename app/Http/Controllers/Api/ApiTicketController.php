@@ -16,6 +16,7 @@ use App\Models\TicketType;
 use App\Models\User;
 use App\Notifications\TicketCommentNotification;
 use App\Notifications\TicketCreatedNotification;
+use App\Services\FcmNotificationService;
 use App\Services\SyncUserSimrsNikFromEmailService;
 use App\Services\TicketTelegramGroupNotifier;
 use Illuminate\Http\JsonResponse;
@@ -91,6 +92,21 @@ class ApiTicketController extends Controller
         foreach ($staffInDept as $staff) {
             $staff->notify(new TicketCreatedNotification($ticket));
         }
+
+        // FCM notification to department staff
+        $fcm = app(FcmNotificationService::class);
+        $fcm->sendToDepartmentStaff(
+            $depId,
+            'Tiket Baru',
+            "#{$ticket->ticket_number}: {$ticket->title}",
+            [
+                'type' => 'ticket_new',
+                'ticket_id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number,
+                'category' => $category?->name ?? '',
+                'priority' => $ticket->priority->name,
+            ]
+        );
 
         TicketTelegramGroupNotifier::notifyNewTicket($ticket);
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\OfficerLocationUpdated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\UpdateOfficerLocationRequest;
 use App\Models\EmergencyReport;
@@ -56,8 +57,12 @@ class OfficerLocationController extends Controller
             'distance_meters' => $distanceMeters,
         ]);
 
+        // Broadcast location update to Command Center via WebSocket
+        OfficerLocationUpdated::dispatch($location->fresh(['officer', 'emergencyReport']));
+
         return response()->json([
             'success' => true,
+            'message' => 'Lokasi berhasil diperbarui',
             'data' => [
                 'officer_id' => $officer->id,
                 'distance_to_target_meters' => $distanceMeters,

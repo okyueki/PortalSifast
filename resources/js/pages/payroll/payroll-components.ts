@@ -1,46 +1,70 @@
 export type PayrollComponent = {
     key: string;
     label: string;
-    section: 'pendapatan' | 'potongan';
+    section: 'pendapatan' | 'potongan' | 'total';
 };
 
 export const PAYROLL_COMPONENTS: PayrollComponent[] = [
     // ==================== PENDAPATAN ====================
+    // Gaji Pokok
     { section: 'pendapatan', key: 'gaji_pokok', label: 'Gaji Pokok' },
+    // Tunjangan
     { section: 'pendapatan', key: 'keluarga', label: 'Tunj. Keluarga' },
     { section: 'pendapatan', key: 'fungsional', label: 'Tunj. Fungsional' },
     { section: 'pendapatan', key: 'struktural', label: 'Tunj. Struktural' },
-    { section: 'pendapatan', key: 'operasional', label: 'Operasional' },
+    { section: 'pendapatan', key: 'operasional', label: 'Tunj. Operasional' },
+    // BPJS TK Perusahaan
+    { section: 'pendapatan', key: 'jkk', label: 'JKK (Perusahaan)' },
+    { section: 'pendapatan', key: 'jkm', label: 'JKM (Perusahaan)' },
+    { section: 'pendapatan', key: 'jht', label: 'JHT (Perusahaan)' },
+    { section: 'pendapatan', key: 'jp', label: 'JP (Perusahaan)' },
+    { section: 'pendapatan', key: 'bpjs_kes', label: 'BPJS Kesehatan (Perusahaan)' },
+    // Lainnya
     { section: 'pendapatan', key: 'transport_spj', label: 'Transport / SPJ' },
-    { section: 'pendapatan', key: 'jm_dokter', label: 'Jasa Medik / JM Dokter' },
-    { section: 'pendapatan', key: 'lain_lain', label: 'Lain-lain' },
+    { section: 'pendapatan', key: 'jm_dokter', label: 'Jasa Medik Dokter' },
     { section: 'pendapatan', key: 'lembur', label: 'Lembur' },
     { section: 'pendapatan', key: 'on_call', label: 'On Call' },
-    { section: 'pendapatan', key: 'jkn_desember_2025', label: 'JKN Desember 2025' },
-    { section: 'pendapatan', key: 'umum_januari_2025', label: 'Umum Januari 2025' },
-    { section: 'pendapatan', key: 'jkn_susulan_1', label: 'JKN Susulan 1' },
-    { section: 'pendapatan', key: 'jkn_susulan_2', label: 'JKN Susulan 2' },
+    { section: 'pendapatan', key: 'lain_lain', label: 'Lain-lain' },
+    // JKN & Umum
+    { section: 'pendapatan', key: 'jkn', label: 'JKN' },
+    { section: 'pendapatan', key: 'umum', label: 'Umum' },
+    { section: 'pendapatan', key: 'jkn_susulan', label: 'JKN Susulan' },
+    { section: 'pendapatan', key: 'jkn_susulan_l', label: 'JKN Susulan L' },
+    // Total dari CSV
+    { section: 'total', key: 'jumlah', label: 'Jumlah' },
+    { section: 'total', key: 'jumlah_tunjangan', label: 'Jumlah Tunjangan' },
 
     // ==================== POTONGAN ====================
-    { section: 'potongan', key: 'zakat', label: 'Zakat' },
-    { section: 'potongan', key: 'pajak', label: 'Pajak' },
-    { section: 'potongan', key: 'jkk_pot', label: 'JKK' },
-    { section: 'potongan', key: 'jkm_pot', label: 'JKM' },
-    { section: 'potongan', key: 'jht_pot', label: 'JHT' },
-    { section: 'potongan', key: 'jp_pot', label: 'JP' },
-    { section: 'potongan', key: 'bpjs_kes_pot_1', label: 'BPJS Kesehatan' },
-    { section: 'potongan', key: 'bpjs_kes_pot_2', label: 'BPJS Kesehatan (2)' },
-    { section: 'potongan', key: 'bpjs_kes_tdk_dtg', label: 'BPJS Kes (tdk ditanggung)' },
+    // BPJS TK Karyawan
+    { section: 'potongan', key: 'jkk_k', label: 'JKK (Karyawan)' },
+    { section: 'potongan', key: 'jkm_k', label: 'JKM (Karyawan)' },
+    { section: 'potongan', key: 'jht_k', label: 'JHT (Karyawan)' },
+    { section: 'potongan', key: 'jp_k', label: 'JP (Karyawan)' },
+    { section: 'potongan', key: 'bpjs_kes_k', label: 'BPJS Kesehatan (Karyawan)' },
+    // Iuran
+    { section: 'potongan', key: 'jht_i', label: 'JHT Iuran' },
+    { section: 'potongan', key: 'jp_i', label: 'JP Iuran' },
+    { section: 'potongan', key: 'bpjs_kes_i', label: 'BPJS Kesehatan Iuran' },
+    { section: 'potongan', key: 'bpjs_kes_tidak_ditanggung', label: 'BPJS Kes Tdk Ditanggung' },
+    // Potongan Lain
     { section: 'potongan', key: 'matan', label: 'Matan' },
     { section: 'potongan', key: 'lazismu', label: 'Lazismu' },
-    { section: 'potongan', key: 'obat2an_pot', label: 'Obat/Jasmed/Tindakan' },
-    { section: 'potongan', key: 'hutang_bpjs', label: 'Hutang BRI' },
+    { section: 'potongan', key: 'obat2an', label: 'Obat/Jasmed/Tindakan' },
+    { section: 'potongan', key: 'hutang_bpjs', label: 'Hutang BPJS' },
     { section: 'potongan', key: 'hutang_seragam', label: 'Hutang Seragam' },
     { section: 'potongan', key: 'ikkm', label: 'IKKM' },
-    { section: 'potongan', key: 'lain_lain', label: 'Lain-lain' },
+    { section: 'potongan', key: 'lain_pot', label: 'Lain-lain' },
+    // Zakat & Pajak
+    { section: 'potongan', key: 'zakat', label: 'Zakat' },
+    { section: 'potongan', key: 'pajak', label: 'Pajak (PPh 21)' },
+    // Total dari CSV
+    { section: 'total', key: 'jumlah_pot', label: 'Jumlah Potongan' },
 ];
 
 export function getComponentsBySection(section: PayrollComponent['section']): PayrollComponent[] {
     return PAYROLL_COMPONENTS.filter((c) => c.section === section);
 }
 
+export function getAllComponentKeys(): string[] {
+    return PAYROLL_COMPONENTS.filter((c) => c.section !== 'total').map((c) => c.key);
+}

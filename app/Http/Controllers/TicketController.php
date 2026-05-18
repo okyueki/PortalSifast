@@ -19,6 +19,7 @@ use App\Models\TicketType;
 use App\Models\User;
 use App\Notifications\TicketAssignedNotification;
 use App\Notifications\TicketCreatedNotification;
+use App\Services\FcmNotificationService;
 use App\Services\TicketAttachmentStorageService;
 use App\Services\TicketTelegramGroupNotifier;
 use App\Support\TicketResolutionDuration;
@@ -736,6 +737,18 @@ class TicketController extends Controller
                         ];
 
                         $newAssignee->notify(new TicketAssignedNotification($ticket, $user));
+
+                        // FCM notification to assignee
+                        app(FcmNotificationService::class)->sendToUser(
+                            $newAssignee->id,
+                            'Tiket Ditugaskan',
+                            "#{$ticket->ticket_number}: {$ticket->title}",
+                            [
+                                'type' => 'ticket_assigned',
+                                'ticket_id' => $ticket->id,
+                                'ticket_number' => $ticket->ticket_number,
+                            ]
+                        );
 
                         // Set first response time if not set
                         if (! $ticket->first_response_at) {

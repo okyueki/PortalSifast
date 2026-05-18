@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
+    Bell,
     ChevronDown,
     Columns3,
     FileText,
@@ -162,17 +163,24 @@ const moduleGroups: NavGroup[] = [
         items: [
             {
                 id: 'emergency-reports',
-                label: 'Laporan Emergency',
+                label: 'Daftar Laporan',
                 href: '/emergency-reports',
                 icon: AlertTriangle,
                 isActive: (path) => path === '/emergency-reports' || /^\/emergency-reports\/\d+/.test(path),
             },
             {
                 id: 'emergency-reports-create',
-                label: 'Buat Laporan Emergency',
+                label: 'Buat Laporan',
                 href: '/emergency-reports/create',
                 icon: PlusCircle,
                 isActive: (path) => path === '/emergency-reports/create',
+            },
+            {
+                id: 'panic-staff',
+                label: 'Panic Staff',
+                href: '/panic-staff',
+                icon: Bell,
+                isActive: (path) => path === '/panic-staff',
             },
         ],
     },
