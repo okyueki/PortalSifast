@@ -74,6 +74,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('emergency-reports', [EmergencyReportWebController::class, 'store'])->name('emergency-reports.store');
     Route::get('emergency-reports/{emergency_report}', [EmergencyReportWebController::class, 'show'])->name('emergency-reports.show');
     Route::patch('emergency-reports/{emergency_report}/respond', [EmergencyReportWebController::class, 'respond'])->name('emergency-reports.respond');
+    Route::post('emergency-reports/{emergency_report}/cancel', [EmergencyReportWebController::class, 'cancel'])->name('emergency-reports.cancel');
+    Route::delete('emergency-reports/{emergency_report}', [EmergencyReportWebController::class, 'destroy'])->name('emergency-reports.destroy');
 
     // Staff Mobile - Panic Button Acceptance
     Route::get('panic-staff', [EmergencyReportWebController::class, 'staff'])->name('emergency-reports.staff');
@@ -185,6 +187,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::middleware(['simmutu.view', 'simmutu.input'])->group(function (): void {
             Route::get('realisations/create', [MutuRealisationController::class, 'create'])->name('realisations.create');
             Route::post('realisations', [MutuRealisationController::class, 'store'])->name('realisations.store');
+            Route::get('realisations/{realisation}/edit', [MutuRealisationController::class, 'edit'])->name('realisations.edit');
+            Route::patch('realisations/{realisation}', [MutuRealisationController::class, 'update'])->name('realisations.update');
+            Route::delete('realisations/{realisation}', [MutuRealisationController::class, 'destroy'])->name('realisations.destroy');
+            Route::get('realisations/{realisation}', [MutuRealisationController::class, 'show'])->name('realisations.show');
         });
     });
 
@@ -195,6 +201,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('payroll/import', [EmployeeSalaryWebImportController::class, 'create'])->name('payroll.import');
         Route::post('payroll/import', [EmployeeSalaryWebImportController::class, 'store'])->name('payroll.import.store');
         Route::get('payroll/import-history', [EmployeeSalaryWebImportController::class, 'importHistory'])->name('payroll.import-history');
+        Route::get('payroll/import/{payrollImport}/warnings', [EmployeeSalaryWebImportController::class, 'importWarnings'])->name('payroll.import-warnings');
         Route::get('payroll/audit-logs', [EmployeeSalaryWebImportController::class, 'auditLogs'])->name('payroll.audit-logs');
         Route::post('payroll/import/{payrollImport}/rollback', [EmployeeSalaryWebImportController::class, 'rollbackImport'])->name('payroll.rollback');
         Route::post('payroll/import/{payrollImport}/approve', [EmployeeSalaryWebImportController::class, 'approveImport'])->name('payroll.approve');

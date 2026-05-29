@@ -12,3 +12,6 @@ Schedule::command('tickets:auto-close')->daily();
 
 // Check pending panic reports every 2 minutes
 Schedule::command('panic:check-pending')->everyTwoMinutes();
+
+// Check for overdue tickets and create notifications every 5 minutes
+Schedule::command('notifications:check-overdue')->everyFiveMinutes();

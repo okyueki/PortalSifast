@@ -17,7 +17,6 @@ import {
     Zap,
 } from 'lucide-react';
 import { useState, useCallback, useEffect, useRef } from 'react';
-import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +25,7 @@ import {
     useEmergencyBroadcast,
     type EmergencyReportCreatedEvent,
 } from '@/hooks/use-emergency-broadcast';
+import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 
 const breadcrumbs = [

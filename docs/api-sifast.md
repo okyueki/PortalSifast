@@ -14,7 +14,18 @@ Dokumen ini menyatukan **semua endpoint API** yang dipakai frontend Sifast (apli
 - ✅ **Payroll (slip gaji):** Sudah tersedia — **pola NIK sama persis tiket** (token service + `?nik=`), lihat [API-TICKETING.md](./API-TICKETING.md) bagian *Payroll* dan [api-documentation.md](./api-documentation.md) bagian Payroll
 - ✅ **Emergency Reports:** Sudah tersedia dan berjalan
 - ✅ **Officer Tracking:** Sudah diimplementasikan (login officer, update lokasi, get officer-location)
-- ✅ **SIMMUTU Input API:** Sudah tersedia — lihat [API-SIMMUTU.md](./API-SIMMUTU.md)
+- ✅ **SIMMUTU Input API:** Sudah tersedia dan lengkap — lihat [API-SIMMUTU.md](./API-SIMMUTU.md)
+
+| Fitur | Method | Endpoint |
+|-------|--------|----------|
+| List indikator | GET | `/api/sifast/simmutu/indicators` |
+| List realisations | GET | `/api/sifast/simmutu/realisations` |
+| Input realisation | POST | `/api/sifast/simmutu/realisations` |
+| Daily rows (kalender) | GET | `/api/sifast/simmutu/realisations/daily-rows` |
+| Stats | GET | `/api/sifast/simmutu/realisations/stats` |
+| Detail realisation | GET | `/api/sifast/simmutu/realisations/{id}` |
+| Update realisation | PATCH | `/api/sifast/simmutu/realisations/{id}` |
+| Hapus realisation | DELETE | `/api/sifast/simmutu/realisations/{id}` |
 
 **Login & pengguna:**
 - **Login yang dipakai:** login yang **sudah ada** di PortalSifast (email + password, Laravel Fortify). Tidak ada login terpisah untuk internal.

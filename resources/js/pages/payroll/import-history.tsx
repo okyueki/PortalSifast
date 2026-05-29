@@ -10,6 +10,7 @@ import {
     Upload,
     X,
     XCircle,
+    AlertCircle,
 } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
@@ -77,6 +78,42 @@ export default function ImportHistory() {
     });
     const [rejectNotes, setRejectNotes] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
+    const [warningModal, setWarningModal] = useState<{ open: boolean; importId: number | null }>({
+        open: false,
+        importId: null,
+    });
+    const [warningData, setWarningData] = useState<{
+        period_label: string;
+        filename: string;
+        total_records: number;
+        avg_penerimaan: number;
+        warning_count: number;
+        warnings: Array<{
+            id: number;
+            nik: string;
+            nama: string;
+            unit: string;
+            penerimaan: number;
+            pajak: number;
+            issues: string[];
+        }>;
+    } | null>(null);
+    const [loadingWarnings, setLoadingWarnings] = useState(false);
+
+    const fetchWarnings = async (importId: number) => {
+        setLoadingWarnings(true);
+        try {
+            const response = await fetch(`/payroll/import/${importId}/warnings`);
+            const data = await response.json();
+            setWarningData(data);
+            setWarningModal({ open: true, importId });
+        } catch (error) {
+            console.error('Failed to fetch warnings:', error);
+            alert('Gagal mengambil detail warning');
+        } finally {
+            setLoadingWarnings(false);
+        }
+    };
 
     const handleRollback = (importItem: ImportItem) => {
         if (importItem.status === 'rolled_back') return;
@@ -255,7 +292,13 @@ export default function ImportHistory() {
                                             <td className="px-4 py-3 text-right">
                                                 <span className="font-medium text-emerald-600">{item.imported_count}</span>
                                                 {item.warning_count > 0 && (
-                                                    <span className="ml-1 text-amber-600">({item.warning_count}⚠)</span>
+                                                    <button
+                                                        className="ml-1 text-amber-600 hover:text-amber-700 underline underline-offset-2 cursor-pointer"
+                                                        onClick={() => fetchWarnings(item.id)}
+                                                        title="Klik untuk lihat detail warning"
+                                                    >
+                                                        ({item.warning_count}⚠)
+                                                    </button>
                                                 )}
                                             </td>
                                             <td className="px-4 py-3 text-center">
@@ -388,6 +431,94 @@ export default function ImportHistory() {
                         </Button>
                         <Button variant="destructive" onClick={handleReject} disabled={isProcessing || !rejectNotes.trim()}>
                             {isProcessing ? 'Memproses...' : 'Tolak'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={warningModal.open} onOpenChange={(open) => setWarningModal({ open, importId: open ? warningModal.importId : null })}>
+                <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <AlertCircle className="h-5 w-5 text-amber-600" />
+                            Detail Warning Import
+                        </DialogTitle>
+                        <DialogDescription>
+                            {warningData ? (
+                                <span>
+                                    Periode <strong>{warningData.period_label}</strong> — File: <strong>{warningData.filename}</strong>
+                                </span>
+                            ) : (
+                                'Memuat data...'
+                            )}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {loadingWarnings ? (
+                        <div className="flex items-center justify-center py-8">
+                            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                        </div>
+                    ) : warningData ? (
+                        <div className="flex flex-col gap-4 overflow-hidden">
+                            <div className="grid grid-cols-3 gap-4 rounded-lg bg-muted/30 p-4">
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Total Records</p>
+                                    <p className="text-lg font-semibold">{warningData.total_records}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Rata-rata Penerimaan</p>
+                                    <p className="text-lg font-semibold">
+                                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(warningData.avg_penerimaan)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Records dengan Warning</p>
+                                    <p className="text-lg font-semibold text-amber-600">{warningData.warning_count}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 max-h-[400px] overflow-y-auto">
+                                <div className="space-y-3 pr-4">
+                                    {warningData.warnings.length === 0 ? (
+                                        <p className="text-center py-8 text-muted-foreground">
+                                            Tidak ada warning yang ditemukan.
+                                        </p>
+                                    ) : (
+                                        warningData.warnings.map((warning, index) => (
+                                            <div key={warning.id} className="rounded-lg border p-4">
+                                                <div className="flex items-start justify-between">
+                                                    <div>
+                                                        <p className="font-medium">{warning.nama || '-'}</p>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            NIK: {warning.nik} | Unit: {warning.unit || '-'}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-sm text-muted-foreground">Penerimaan</p>
+                                                        <p className="font-medium">
+                                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(warning.penerimaan)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-2 flex flex-wrap gap-1">
+                                                    {warning.issues.map((issue, i) => (
+                                                        <Badge key={i} variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950">
+                                                            <AlertTriangle className="mr-1 h-3 w-3" />
+                                                            {issue}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setWarningModal({ open: false, importId: null })}>
+                            Tutup
                         </Button>
                     </DialogFooter>
                 </DialogContent>

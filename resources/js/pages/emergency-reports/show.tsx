@@ -1,11 +1,11 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { ArrowLeft, MapPin, User, Phone, MessageSquare, Clock, AlertCircle, Navigation, Map } from 'lucide-react';
 import { useState, useCallback, useEffect } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import EmergencyMap, { type ReportMarker, type OfficerMarker } from '@/components/ui/emergency-map';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import {
     Select,
     SelectContent,
@@ -14,11 +14,11 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useEmergencyBroadcast, type OfficerLocationUpdatedEvent } from '@/hooks/use-emergency-broadcast';
 import AppLayout from '@/layouts/app-layout';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
-import EmergencyMap, { type ReportMarker, type OfficerMarker } from '@/components/ui/emergency-map';
-import { useEmergencyBroadcast, type OfficerLocationUpdatedEvent } from '@/hooks/use-emergency-broadcast';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard().url },
@@ -163,6 +163,40 @@ export default function EmergencyReportsShow({ report, statuses, categories }: P
         respondForm.patch(`/emergency-reports/${reportData.report_id}/respond`, {
             preserveScroll: true,
         });
+    };
+
+    const [cancelLoading, setCancelLoading] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+
+    const handleCancel = async () => {
+        if (!confirm('Apakah Anda yakin ingin membatalkan laporan ini?')) return;
+
+        setCancelLoading(true);
+        try {
+            await router.post(`/emergency-reports/${reportData.report_id}/cancel`, {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setReportData(prev => ({ ...prev, status: 'cancelled' }));
+                },
+            });
+        } finally {
+            setCancelLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm('PERHATIAN: Laporan ini akan dihapus permanen. Lanjutkan?')) return;
+
+        setDeleteLoading(true);
+        try {
+            await router.delete(`/emergency-reports/${reportData.report_id}`, {
+                preserveScroll: true,
+            });
+            // Redirect to index after successful delete
+            window.location.href = '/emergency-reports';
+        } catch {
+            setDeleteLoading(false);
+        }
     };
 
     // Map data
@@ -486,6 +520,32 @@ export default function EmergencyReportsShow({ report, statuses, categories }: P
                                         {respondForm.processing ? 'Menyimpan...' : 'Simpan Perubahan'}
                                     </Button>
                                 </form>
+                            )}
+
+                            {/* Action Buttons - Cancel & Delete */}
+                            {reportData.status !== 'cancelled' && reportData.status !== 'resolved' && (
+                                <div className="mt-4 flex gap-2 border-t pt-4">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleCancel}
+                                        disabled={cancelLoading}
+                                        className="text-amber-600 hover:text-amber-700 hover:border-amber-300"
+                                    >
+                                        {cancelLoading ? 'Membatalkan...' : 'Batalkan Laporan'}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleDelete}
+                                        disabled={deleteLoading}
+                                        className="text-red-600 hover:text-red-700 hover:border-red-300"
+                                    >
+                                        {deleteLoading ? 'Menghapus...' : 'Hapus Laporan'}
+                                    </Button>
+                                </div>
                             )}
                         </CardContent>
                     </Card>

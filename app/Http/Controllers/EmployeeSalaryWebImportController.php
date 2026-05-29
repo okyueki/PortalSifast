@@ -522,6 +522,77 @@ class EmployeeSalaryWebImportController extends Controller
         ]);
     }
 
+    public function importWarnings(Request $request, PayrollImport $payrollImport): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user?->canAccessPayroll()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $salaries = EmployeeSalary::query()
+            ->where('import_id', $payrollImport->id)
+            ->where('status', '!=', 'published')  // Hanya data draft
+            ->get();
+
+        $allSalaries = $salaries->map(fn ($s) => [
+            'id' => $s->id,
+            'nik' => $s->simrs_nik,
+            'nama' => $s->employee_name,
+            'penerimaan' => (float) ($s->penerimaan ?? 0),
+            'pajak' => (float) ($s->pajak ?? 0),
+            'unit' => $s->unit,
+            'period_start' => $s->period_start?->toDateString(),
+        ])->toArray();
+
+        $validPenerimaan = array_filter(array_column($allSalaries, 'penerimaan'), fn ($v) => $v > 0);
+        $avgPenerimaan = count($validPenerimaan) > 0 ? array_sum($validPenerimaan) / count($validPenerimaan) : 0;
+        $lowThreshold = $avgPenerimaan * 0.3;
+        $highThreshold = $avgPenerimaan * 2.5;
+
+        $warnings = [];
+        foreach ($allSalaries as $salary) {
+            $issues = [];
+
+            if (empty($salary['nama'])) {
+                $issues[] = 'Nama pegawai kosong';
+            }
+
+            if ($salary['penerimaan'] === 0.0) {
+                $issues[] = 'Penerimaan = 0';
+            } elseif ($avgPenerimaan > 0 && $salary['penerimaan'] < $lowThreshold) {
+                $issues[] = 'Penerimaan jauh di bawah rata-rata (<30%)';
+            } elseif ($avgPenerimaan > 0 && $salary['penerimaan'] > $highThreshold) {
+                $issues[] = 'Penerimaan jauh di atas rata-rata (>250%)';
+            }
+
+            if ($salary['penerimaan'] > 0 && $salary['pajak'] > $salary['penerimaan'] * 0.5) {
+                $issues[] = 'Pajak > 50% dari penerimaan';
+            }
+
+            if (count($issues) > 0) {
+                $warnings[] = [
+                    'id' => $salary['id'],
+                    'nik' => $salary['nik'],
+                    'nama' => $salary['nama'] ?? '-',
+                    'unit' => $salary['unit'] ?? '-',
+                    'penerimaan' => $salary['penerimaan'],
+                    'pajak' => $salary['pajak'],
+                    'issues' => $issues,
+                ];
+            }
+        }
+
+        return response()->json([
+            'import_id' => $payrollImport->id,
+            'period_label' => $payrollImport->period_start?->translatedFormat('F Y'),
+            'filename' => $payrollImport->filename,
+            'total_records' => count($allSalaries),
+            'avg_penerimaan' => round($avgPenerimaan, 0),
+            'warning_count' => count($warnings),
+            'warnings' => $warnings,
+        ]);
+    }
+
     public function auditLogs(Request $request): Response
     {
         $user = $request->user();

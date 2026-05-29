@@ -1,7 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import {
     Search, Plus, Filter, AlertCircle, Eye, Map, List,
-    Clock, Users, Activity, CheckCircle, Wifi, WifiOff, MapPin, RefreshCw
+    Clock, Users, Activity, CheckCircle, Wifi, WifiOff, MapPin, RefreshCw, Trash2
 } from 'lucide-react';
 import { useState, useCallback, useEffect } from 'react';
 import { EmptyState } from '@/components/empty-state';
@@ -9,6 +9,7 @@ import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import EmergencyMap, { type ReportMarker, type OfficerMarker } from '@/components/ui/emergency-map';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -17,15 +18,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
-import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
-import type { BreadcrumbItem } from '@/types';
-import EmergencyMap, { type ReportMarker, type OfficerMarker } from '@/components/ui/emergency-map';
 import {
     useEmergencyBroadcast,
     type EmergencyReportStatusChangedEvent,
 } from '@/hooks/use-emergency-broadcast';
+import AppLayout from '@/layouts/app-layout';
+import { cn } from '@/lib/utils';
+import { dashboard } from '@/routes';
+import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard().url },
@@ -204,8 +204,8 @@ export default function EmergencyReportsIndex({
     const applyFilters = () => {
         router.get('/emergency-reports', {
             q: search || undefined,
-            status: status || undefined,
-            category: category || undefined,
+            status: status === '__all__' ? undefined : status || undefined,
+            category: category === '__all__' ? undefined : category || undefined,
             date_from: dateFrom || undefined,
             date_to: dateTo || undefined,
         }, { preserveState: true });
@@ -221,6 +221,13 @@ export default function EmergencyReportsIndex({
     };
 
     const hasFilters = !!(filters.status || filters.category || filters.date_from || filters.date_to || filters.q);
+
+    const handleDeleteRow = (reportId: string) => {
+        if (!confirm('PERHATIAN: Laporan ini akan dihapus permanen. Lanjutkan?')) return;
+        router.delete(`/emergency-reports/${reportId}`, {
+            preserveScroll: true,
+        });
+    };
 
     // Convert data for map
     const reportMarkers: ReportMarker[] = reportsData.data.map(r => ({
@@ -434,7 +441,7 @@ export default function EmergencyReportsIndex({
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">Semua Status</SelectItem>
+                                <SelectItem value="__all__">Semua Status</SelectItem>
                                 {Object.entries(statuses).map(([k, v]) => (
                                     <SelectItem key={k} value={k}>{v}</SelectItem>
                                 ))}
@@ -445,7 +452,7 @@ export default function EmergencyReportsIndex({
                                 <SelectValue placeholder="Kategori" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">Semua Kategori</SelectItem>
+                                <SelectItem value="__all__">Semua Kategori</SelectItem>
                                 {Object.entries(categories).map(([k, v]) => (
                                     <SelectItem key={k} value={k}>{v}</SelectItem>
                                 ))}
@@ -553,6 +560,20 @@ export default function EmergencyReportsIndex({
                                                                         <Eye className="h-4 w-4" />
                                                                     </Link>
                                                                 </Button>
+                                                                {r.status !== 'cancelled' && r.status !== 'resolved' && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDeleteRow(r.report_id);
+                                                                        }}
+                                                                        className="text-red-500 hover:text-red-600"
+                                                                        title="Hapus"
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                )}
                                                                 {r.officer_location && (
                                                                     <span className="text-xs text-green-600 font-medium">
                                                                         🚗 {r.officer_location.eta_minutes}m

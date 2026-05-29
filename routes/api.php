@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\ApiTicketController;
+use App\Http\Controllers\Api\DashboardActivityController;
+use App\Http\Controllers\Api\DashboardAnalyticsController;
+use App\Http\Controllers\Api\DashboardNotificationController;
 use App\Http\Controllers\Api\EmergencyDashboardController;
 use App\Http\Controllers\Api\EmergencyReportController;
 use App\Http\Controllers\Api\EmployeeSalaryController;
@@ -89,10 +92,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/payroll/{employeeSalary}', [EmployeeSalaryController::class, 'show']);
 
         // SIMMUTU (integrasi frontend eksternal)
-        Route::prefix('simmutu')->group(function () {
+        Route::prefix('simmutu')->middleware('can:access-simmutu-module')->group(function () {
             Route::get('/indicators', [SimmutuApiController::class, 'indicators']);
             Route::get('/realisations', [SimmutuApiController::class, 'index']);
-            Route::post('/realisations', [SimmutuApiController::class, 'store']);
+            Route::post('/realisations', [SimmutuApiController::class, 'store'])->middleware('can:record-mutu-realisation');
+            Route::get('/realisations/daily-rows', [SimmutuApiController::class, 'dailyRows']);
+            Route::get('/realisations/stats', [SimmutuApiController::class, 'stats']);
+            Route::get('/realisations/{realisation}', [SimmutuApiController::class, 'show']);
+            Route::patch('/realisations/{realisation}', [SimmutuApiController::class, 'update'])->middleware('can:record-mutu-realisation');
+            Route::delete('/realisations/{realisation}', [SimmutuApiController::class, 'destroy'])->middleware('can:record-mutu-realisation');
         });
 
         // Emergency / Panic Button
@@ -143,4 +151,12 @@ Route::get('/health', function () {
         'message' => 'API PortalSifast Ticketing',
         'version' => '1.0',
     ]);
+});
+
+// Dashboard API endpoints (authenticated)
+Route::middleware('auth:sanctum')->prefix('dashboard')->group(function () {
+    Route::get('/analytics', [DashboardAnalyticsController::class, 'index']);
+    Route::get('/activities', [DashboardActivityController::class, 'index']);
+    Route::get('/notifications', [DashboardNotificationController::class, 'index']);
+    Route::post('/notifications/mark-read', [DashboardNotificationController::class, 'markAsRead']);
 });

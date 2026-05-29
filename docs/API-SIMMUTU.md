@@ -157,6 +157,161 @@ Response validasi `422`:
 }
 ```
 
+### 2.4 Get Daily Rows (untuk Kalender)
+
+- **Method:** `GET`
+- **URL:** `/api/sifast/simmutu/realisations/daily-rows`
+- **Query wajib:** `month` format `YYYY-MM`
+- **Query opsional:**
+  - `dep_id` (string)
+  - `mutu_indicator_id` (integer)
+
+Contoh:
+
+```bash
+curl -X GET "https://portalsifast.rsaisyiyahsitifatimah.com/api/sifast/simmutu/realisations/daily-rows?month=2026-05" \
+  -H "Authorization: Bearer {token}" \
+  -H "Accept: application/json"
+```
+
+Response `200`:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "mutu_indicator_id": 12,
+      "dep_id": "IGD",
+      "date": "2026-05-01",
+      "day": 1,
+      "achievement_percent": 84.50
+    },
+    {
+      "mutu_indicator_id": 12,
+      "dep_id": "IGD",
+      "date": "2026-05-02",
+      "day": 2,
+      "achievement_percent": null
+    }
+  ]
+}
+```
+
+### 2.5 Get Stats (Statistik)
+
+- **Method:** `GET`
+- **URL:** `/api/sifast/simmutu/realisations/stats`
+- **Query opsional:** `month` format `YYYY-MM`
+
+Contoh:
+
+```bash
+curl -X GET "https://portalsifast.rsaisyiyahsitifatimah.com/api/sifast/simmutu/realisations/stats?month=2026-05" \
+  -H "Authorization: Bearer {token}" \
+  -H "Accept: application/json"
+```
+
+Response `200`:
+
+```json
+{
+  "success": true,
+  "data": {
+    "total_entries": 156,
+    "avg_achievement_percent": 87.5,
+    "unique_indicator_count": 12
+  }
+}
+```
+
+### 2.6 Detail Realisasi
+
+- **Method:** `GET`
+- **URL:** `/api/sifast/simmutu/realisations/{id}`
+
+Contoh:
+
+```bash
+curl -X GET "https://portalsifast.rsaisyiyahsitifatimah.com/api/sifast/simmutu/realisations/889" \
+  -H "Authorization: Bearer {token}" \
+  -H "Accept: application/json"
+```
+
+Response `200`:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 889,
+    "mutu_indicator_id": 12,
+    "indicator": {
+      "id": 12,
+      "title": "Kepatuhan Hand Hygiene",
+      "category": "Sasaran Mutu Unit",
+      "numerator_definition": "Jumlah petugas patuh",
+      "denominator_definition": "Jumlah petugas diamati"
+    },
+    "dep_id": "IGD",
+    "period_anchor": "D:2026-04-24",
+    "numerator_value": 42,
+    "denominator_value": 50,
+    "achievement_percent": 84,
+    "notes": "Input dari aplikasi mobile",
+    "input_by": 5,
+    "input_by_name": "dr. Budi Santoso",
+    "created_at": "2026-04-24T10:30:00+07:00",
+    "can_edit": true
+  }
+}
+```
+
+### 2.7 Update Realisasi
+
+- **Method:** `PATCH`
+- **URL:** `/api/sifast/simmutu/realisations/{id}`
+
+Body JSON:
+
+```json
+{
+  "numerator_value": 45,
+  "denominator_value": 50,
+  "notes": "Update data realisation"
+}
+```
+
+Response sukses `200`:
+
+```json
+{
+  "success": true,
+  "message": "Realisasi mutu berhasil diperbarui.",
+  "data": {
+    "id": 889,
+    "numerator_value": 45,
+    "denominator_value": 50,
+    "achievement_percent": 90,
+    "notes": "Update data realisation"
+  }
+}
+```
+
+### 2.8 Hapus Realisasi
+
+- **Method:** `DELETE`
+- **URL:** `/api/sifast/simmutu/realisations/{id}`
+
+Response sukses `200`:
+
+```json
+{
+  "success": true,
+  "message": "Realisasi mutu berhasil dihapus."
+}
+```
+
 ## 3) Ringkasan Field
 
 - `mutu_indicator_id` -> id indikator aktif

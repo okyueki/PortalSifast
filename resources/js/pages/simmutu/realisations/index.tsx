@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { BarChart3, ClipboardList, Layers, Plus, Sparkles, Target } from 'lucide-react';
+import { BarChart3, ClipboardList, Layers, Pencil, Plus, Sparkles, Target, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,6 +34,7 @@ type Row = {
     indicator: { title: string; mutu_category: { name: string } | null } | null;
     input_user: { name: string } | null;
     created_at: string | null;
+    input_by: number | null;
 };
 
 type Paginated = {
@@ -83,6 +85,7 @@ export default function MutuRealisationsIndex({
 }: Props) {
     const page = usePage<SharedData>();
     const canInput = page.props.permissions?.simmutu?.can_input ?? false;
+    const canManage = page.props.permissions?.simmutu?.can_manage ?? false;
 
     const [filterIndicator, setFilterIndicator] = useState(
         filters.mutu_indicator_id ? String(filters.mutu_indicator_id) : '__all__',
@@ -90,6 +93,8 @@ export default function MutuRealisationsIndex({
     const [filterDep, setFilterDep] = useState(filters.dep_id || '__all__');
     const [filterMonth, setFilterMonth] = useState(filters.month || '');
     const [filterPeriod, setFilterPeriod] = useState(filters.period_anchor || '');
+
+    const [deleteTarget, setDeleteTarget] = useState<{ id: number; title: string } | null>(null);
 
     const applyFilters = (e: React.FormEvent) => {
         e.preventDefault();
@@ -284,6 +289,9 @@ export default function MutuRealisationsIndex({
                                         <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                             Penginput
                                         </th>
+                                        <th className="px-4 py-3.5 w-24 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                            Aksi
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -310,7 +318,9 @@ export default function MutuRealisationsIndex({
                                             <tr key={r.id} className="border-b border-border/60 last:border-0 hover:bg-muted/40">
                                                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{r.period_anchor}</td>
                                                 <td className="px-4 py-3">
-                                                    <span className="font-medium text-foreground">{r.indicator?.title ?? '–'}</span>
+                                                    <Link href={`/simmutu/realisations/${r.id}`} className="font-medium text-foreground hover:text-primary hover:underline">
+                                                        {r.indicator?.title ?? '–'}
+                                                    </Link>
                                                     {r.indicator?.mutu_category && (
                                                         <span className="mt-0.5 block text-xs text-muted-foreground">
                                                             {r.indicator.mutu_category.name}
@@ -331,6 +341,25 @@ export default function MutuRealisationsIndex({
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-muted-foreground">{r.input_user?.name ?? '–'}</td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-1">
+                                                        <Button variant="ghost" size="icon" asChild className="h-8 w-8">
+                                                            <Link href={`/simmutu/realisations/${r.id}/edit`}>
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Link>
+                                                        </Button>
+                                                        {(canManage || r.input_by === page.props.auth?.user?.id) && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                                                onClick={() => setDeleteTarget({ id: r.id, title: r.indicator?.title ?? `ID ${r.id}` })}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </td>
                                             </tr>
                                         ))
                                     )}
@@ -366,6 +395,22 @@ export default function MutuRealisationsIndex({
                         )}
                     </div>
                 </div>
+
+                <ConfirmDialog
+                    open={deleteTarget !== null}
+                    onOpenChange={(open) => !open && setDeleteTarget(null)}
+                    title="Hapus Realisasi?"
+                    description={`Yakin ingin menghapus data "${deleteTarget?.title}"? Tindakan ini tidak dapat dibatalkan.`}
+                    confirmLabel="Hapus"
+                    variant="destructive"
+                    onConfirm={() => {
+                        if (deleteTarget) {
+                            router.delete(`/simmutu/realisations/${deleteTarget.id}`, {
+                                onFinish: () => setDeleteTarget(null),
+                            });
+                        }
+                    }}
+                />
             </div>
         </AppLayout>
     );

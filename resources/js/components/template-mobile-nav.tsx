@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
+    Bell,
     ChevronDown,
     Columns3,
     FileText,

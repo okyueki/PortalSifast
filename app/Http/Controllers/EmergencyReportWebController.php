@@ -267,6 +267,42 @@ class EmergencyReportWebController extends Controller
             ->with('success', 'Status laporan berhasil diperbarui.');
     }
 
+    public function cancel(Request $request, EmergencyReport $emergency_report): RedirectResponse
+    {
+        $this->authorizeEmergency();
+
+        if (! in_array($emergency_report->status, [EmergencyReport::STATUS_PENDING, EmergencyReport::STATUS_RESPONDED, EmergencyReport::STATUS_IN_PROGRESS])) {
+            return redirect()->back()->withErrors(['status' => 'Laporan tidak dapat dibatalkan dalam status ini.']);
+        }
+
+        $previousStatus = $emergency_report->status;
+
+        $emergency_report->update([
+            'status' => EmergencyReport::STATUS_CANCELLED,
+        ]);
+
+        // Broadcast status change via WebSocket
+        EmergencyReportStatusChanged::dispatch(
+            $emergency_report->fresh(),
+            $previousStatus,
+            $request->user()->name
+        );
+
+        return redirect()->route('emergency-reports.show', $emergency_report->report_id)
+            ->with('success', 'Laporan berhasil dibatalkan.');
+    }
+
+    public function destroy(Request $request, EmergencyReport $emergency_report): RedirectResponse
+    {
+        $this->authorizeEmergency();
+
+        $reportId = $emergency_report->report_id;
+        $emergency_report->delete();
+
+        return redirect()->route('emergency-reports.index')
+            ->with('success', 'Laporan berhasil dihapus.');
+    }
+
     /**
      * Get active officers with their latest location.
      *

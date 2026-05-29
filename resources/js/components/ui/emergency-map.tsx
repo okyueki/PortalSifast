@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import 'leaflet/dist/leaflet.css';
 
 // Fix default marker icons for Leaflet

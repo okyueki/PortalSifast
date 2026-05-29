@@ -196,4 +196,201 @@ class SimmutuApiController extends Controller
             ],
         ], 201);
     }
+
+    public function dailyRows(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user?->canAccessSimmutuModule()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke modul SIMMUTU.',
+            ], 403);
+        }
+
+        $selectedMonth = $request->string('month')->toString();
+        if (! preg_match('/^\d{4}-\d{2}$/', $selectedMonth)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Format month harus YYYY-MM.',
+            ], 422);
+        }
+
+        $query = MutuRealisation::query()
+            ->select(['mutu_indicator_id', 'dep_id', 'period_anchor', 'achievement_percent'])
+            ->where('collection_frequency', MutuCollectionFrequency::Harian->value)
+            ->where('period_anchor', 'like', 'D:'.$selectedMonth.'-%');
+
+        if ($request->filled('dep_id')) {
+            $query->where('dep_id', $request->string('dep_id')->toString());
+        } elseif (! $user->canManageMutu()) {
+            $query->where('dep_id', $user->dep_id);
+        }
+
+        if ($request->filled('mutu_indicator_id')) {
+            $query->where('mutu_indicator_id', $request->integer('mutu_indicator_id'));
+        }
+
+        $rows = $query->get()->map(function (MutuRealisation $r) use ($selectedMonth): array {
+            $date = str_replace('D:'.$selectedMonth.'-', '', $r->period_anchor);
+
+            return [
+                'mutu_indicator_id' => $r->mutu_indicator_id,
+                'dep_id' => $r->dep_id,
+                'date' => $selectedMonth.'-'.$date,
+                'day' => (int) $date,
+                'achievement_percent' => $r->achievement_percent !== null ? (float) $r->achievement_percent : null,
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $rows,
+        ]);
+    }
+
+    public function show(MutuRealisation $realisation): JsonResponse
+    {
+        $user = request()->user();
+
+        if (! $user?->canAccessSimmutuModule()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke modul SIMMUTU.',
+            ], 403);
+        }
+
+        $realisation->load(['indicator.mutuCategory', 'inputUser']);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $realisation->id,
+                'mutu_indicator_id' => $realisation->mutu_indicator_id,
+                'indicator' => [
+                    'id' => $realisation->indicator?->id,
+                    'title' => $realisation->indicator?->title,
+                    'category' => $realisation->indicator?->mutuCategory?->name,
+                    'numerator_definition' => $realisation->indicator?->numerator_definition,
+                    'denominator_definition' => $realisation->indicator?->denominator_definition,
+                ],
+                'dep_id' => $realisation->dep_id,
+                'period_anchor' => $realisation->period_anchor,
+                'numerator_value' => $realisation->numerator_value !== null ? (float) $realisation->numerator_value : null,
+                'denominator_value' => $realisation->denominator_value !== null ? (float) $realisation->denominator_value : null,
+                'achievement_percent' => $realisation->achievement_percent !== null ? (float) $realisation->achievement_percent : null,
+                'notes' => $realisation->notes,
+                'input_by' => $realisation->input_by,
+                'input_by_name' => $realisation->inputUser?->name,
+                'created_at' => $realisation->created_at?->toIso8601String(),
+                'can_edit' => $user->canManageMutu() || $realisation->input_by === $user->id,
+            ],
+        ]);
+    }
+
+    public function update(Request $request, MutuRealisation $realisation): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user?->canAccessSimmutuModule()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke modul SIMMUTU.',
+            ], 403);
+        }
+
+        if (! $user->canManageMutu() && $realisation->input_by !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki izin untuk mengubah data ini.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'numerator_value' => ['required', 'numeric', 'min:0'],
+            'denominator_value' => ['required', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $realisation->update([
+            'numerator_value' => $validated['numerator_value'],
+            'denominator_value' => $validated['denominator_value'],
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Realisasi mutu berhasil diperbarui.',
+            'data' => [
+                'id' => $realisation->id,
+                'numerator_value' => (float) $realisation->numerator_value,
+                'denominator_value' => (float) $realisation->denominator_value,
+                'achievement_percent' => $realisation->achievement_percent !== null ? (float) $realisation->achievement_percent : null,
+                'notes' => $realisation->notes,
+            ],
+        ]);
+    }
+
+    public function destroy(MutuRealisation $realisation): JsonResponse
+    {
+        $user = request()->user();
+
+        if (! $user?->canAccessSimmutuModule()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke modul SIMMUTU.',
+            ], 403);
+        }
+
+        if (! $user->canManageMutu() && $realisation->input_by !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki izin untuk menghapus data ini.',
+            ], 403);
+        }
+
+        $realisation->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Realisasi mutu berhasil dihapus.',
+        ]);
+    }
+
+    public function stats(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user?->canAccessSimmutuModule()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke modul SIMMUTU.',
+            ], 403);
+        }
+
+        $query = MutuRealisation::query();
+        if (! $user->canManageMutu()) {
+            $query->where('dep_id', $user->dep_id);
+        }
+
+        if ($request->filled('month')) {
+            $month = $request->string('month')->toString();
+            if (preg_match('/^\d{4}-\d{2}$/', $month)) {
+                $query->where('period_anchor', 'like', '%'.$month.'%');
+            }
+        }
+
+        $totalEntries = (clone $query)->count();
+        $avgAchievement = (clone $query)->whereNotNull('achievement_percent')->avg('achievement_percent');
+        $uniqueIndicators = (clone $query)->distinct()->count('mutu_indicator_id');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total_entries' => $totalEntries,
+                'avg_achievement_percent' => $avgAchievement !== null ? round((float) $avgAchievement, 2) : null,
+                'unique_indicator_count' => $uniqueIndicators,
+            ],
+        ]);
+    }
 }
