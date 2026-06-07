@@ -29,6 +29,9 @@ class EmployeeSalary extends Model
         // Komponen Pendapatan
         'gaji_pokok',
         'keluarga',
+        'tunj_masa_kerja',
+        'tunj_kehadiran',
+        'tunj_makan',
         'fungsional',
         'struktural',
         'operasional',
@@ -39,7 +42,9 @@ class EmployeeSalary extends Model
         'lain_lain',
         // JKN
         'jkn',
+        'jkn_label',
         'umum',
+        'umum_label',
         'jkn_susulan',
         'jkn_susulan_l',
         // BPJS TK Company
@@ -95,6 +100,9 @@ class EmployeeSalary extends Model
             // Komponen Pendapatan
             'gaji_pokok' => 'decimal:2',
             'keluarga' => 'decimal:2',
+            'tunj_masa_kerja' => 'decimal:2',
+            'tunj_kehadiran' => 'decimal:2',
+            'tunj_makan' => 'decimal:2',
             'fungsional' => 'decimal:2',
             'struktural' => 'decimal:2',
             'operasional' => 'decimal:2',

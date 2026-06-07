@@ -6,6 +6,7 @@ use App\Models\EmployeeSalary;
 use App\Models\PayrollImport;
 use App\Models\Pegawai;
 use App\Models\User;
+use App\Support\PayrollCsvMapper;
 
 class EmployeeSalaryImportService
 {
@@ -49,77 +50,7 @@ class EmployeeSalaryImportService
             $nama = $this->stringOrNull($raw['nama'] ?? null);
             $phone = $pegawai?->no_hp ?? null;
 
-            // Parse komponen pendapatan
-            $gajiPokok = $this->moneyOrNull($raw['gaji_pokok'] ?? null);
-            $keluarga = $this->moneyOrNull($raw['keluarga'] ?? null);
-            $fungsional = $this->moneyOrNull($raw['fungsional'] ?? null);
-            $struktural = $this->moneyOrNull($raw['struktural'] ?? null);
-            $operasional = $this->moneyOrNull($raw['operasional'] ?? null);
-            $transportSpj = $this->moneyOrNull($raw['transt_spj_komunikasi'] ?? $raw['transport_spj'] ?? null);
-            $jmDokter = $this->moneyOrNull($raw['jm_dokter'] ?? null);
-            $lembur = $this->moneyOrNull($raw['lembur'] ?? null);
-            $onCall = $this->moneyOrNull($raw['on_call'] ?? null);
-            $lainLain = $this->moneyOrNull($raw['lain2_bonus'] ?? $raw['lain_lain'] ?? null);
-
-            // Parse JKN components
-            $jkn = $this->parseJknFromRaw($raw);
-            $umum = $this->moneyOrNull($raw['umum_maret_2026'] ?? $raw['umum'] ?? null);
-            $jknSusulan = $this->moneyOrNull($raw['jkn_susulan'] ?? null);
-            $jknSusulanL = $this->moneyOrNull($raw['jkn_susulan_l'] ?? null);
-
-            // Parse BPJS TK Company (tunjangan)
-            $jkk = $this->moneyOrNull($raw['jkk'] ?? null);
-            $jkm = $this->moneyOrNull($raw['jkm'] ?? null);
-            $jht = $this->moneyOrNull($raw['jht'] ?? null);
-            $jp = $this->moneyOrNull($raw['jp'] ?? null);
-            $bpjsKes = $this->moneyOrNull($raw['bpjs_kes'] ?? null);
-
-            // Auto-calculate tunj_bpjs_tk if not provided
-            $tunjBpjsTk = $this->moneyOrNull($raw['tunj_bpjs_tk'] ?? null);
-            if ($tunjBpjsTk === null && ($jkk || $jkm || $jht || $jp)) {
-                $tunjBpjsTk = (string) (($jkk ?? 0) + ($jkm ?? 0) + ($jht ?? 0) + ($jp ?? 0));
-            }
-
-            // Parse BPJS TK Karyawan (potongan)
-            $jkkK = $this->moneyOrNull($raw['jkk_k'] ?? null);
-            $jkmK = $this->moneyOrNull($raw['jkm_k'] ?? null);
-            $jhtK = $this->moneyOrNull($raw['jht_k'] ?? null);
-            $jpK = $this->moneyOrNull($raw['jp_k'] ?? null);
-            $bpjsKesK = $this->moneyOrNull($raw['bpjs_kes_k'] ?? null);
-
-            // Auto-calculate pot_bpjs_tk if not provided
-            $potBpjsTk = $this->moneyOrNull($raw['pot_bpjs_tk'] ?? null);
-            if ($potBpjsTk === null && ($jkkK || $jkmK || $jhtK || $jpK)) {
-                $potBpjsTk = (string) (($jkkK ?? 0) + ($jkmK ?? 0) + ($jhtK ?? 0) + ($jpK ?? 0));
-            }
-
-            // Parse potongan lain
-            $jhtI = $this->moneyOrNull($raw['jht_i'] ?? null);
-            $jpI = $this->moneyOrNull($raw['jp_i'] ?? null);
-            $bpjsKesI = $this->moneyOrNull($raw['bpjs_kes_i'] ?? null);
-            $bpjsKesTdakDitanggung = $this->moneyOrNull($raw['bpjs_kes_tdk_di_tgg'] ?? $raw['bpjs_kes_tidak_ditanggung'] ?? null);
-            $matan = $this->moneyOrNull($raw['matan'] ?? null);
-            $lazismu = $this->moneyOrNull($raw['lazismu'] ?? null);
-            $obat2an = $this->moneyOrNull($raw['obat2an_r'] ?? $raw['obat2an'] ?? null);
-            $hutangBpjs = $this->moneyOrNull($raw['hutang_bpjs'] ?? null);
-            $hutangSeragam = $this->moneyOrNull($raw['hutang_seragam'] ?? null);
-            $ikkm = $this->moneyOrNull($raw['ikkm'] ?? null);
-            $lainPot = $this->moneyOrNull($raw['lain____lain'] ?? $raw['lain_pot'] ?? null);
-
-            // Parse totals from CSV
-            $jumlah = $this->moneyOrNull($raw['jumlah'] ?? null);
-            $jumlahTunjangan = $this->moneyOrNull($raw['jumlah_tunjangan'] ?? null);
-            $jumlahPot = $this->moneyOrNull($raw['jumlah_pot'] ?? null);
-
-            // Parse values
-            $penerimaan = $this->moneyOrNull($raw['penerimaan'] ?? null);
-            $pembulatan = $this->moneyOrNull($raw['pembulatan'] ?? null);
-            $pajak = $this->moneyOrNull($raw['pajak'] ?? null);
-            $zakat = $this->moneyOrNull($raw['zakat'] ?? null);
-
-            // Parse ref_no and salary_no
-            $refNo = $this->intOrNull($raw['no_gaji'] ?? $raw['ref_no'] ?? null);
-            $salaryNo = $this->intOrNull($raw['no_ref'] ?? $raw['salary_no'] ?? null);
+            $mapped = PayrollCsvMapper::mapRawRow($raw);
 
             EmployeeSalary::query()->updateOrCreate(
                 [
@@ -134,61 +65,58 @@ class EmployeeSalaryImportService
                     'unit' => $unit,
                     'npwp' => $npwp,
                     'phone' => $phone,
-                    'salary_no' => $salaryNo,
-                    'ref_no' => $refNo,
-                    'penerimaan' => $penerimaan,
-                    'pembulatan' => $pembulatan,
-                    'pajak' => $pajak,
-                    'zakat' => $zakat,
-                    // Komponen pendapatan
-                    'gaji_pokok' => $gajiPokok,
-                    'keluarga' => $keluarga,
-                    'fungsional' => $fungsional,
-                    'struktural' => $struktural,
-                    'operasional' => $operasional,
-                    'transport_spj' => $transportSpj,
-                    'jm_dokter' => $jmDokter,
-                    'lembur' => $lembur,
-                    'on_call' => $onCall,
-                    'lain_lain' => $lainLain,
-                    // JKN
-                    'jkn' => $jkn,
-                    'umum' => $umum,
-                    'jkn_susulan' => $jknSusulan,
-                    'jkn_susulan_l' => $jknSusulanL,
-                    // BPJS TK Company
-                    'jkk' => $jkk,
-                    'jkm' => $jkm,
-                    'jht' => $jht,
-                    'jp' => $jp,
-                    'tunj_bpjs_tk' => $tunjBpjsTk,
-                    'bpjs_kes' => $bpjsKes,
-                    // BPJS TK Karyawan
-                    'jkk_k' => $jkkK,
-                    'jkm_k' => $jkmK,
-                    'jht_k' => $jhtK,
-                    'jp_k' => $jpK,
-                    'pot_bpjs_tk' => $potBpjsTk,
-                    'bpjs_kes_k' => $bpjsKesK,
-                    // Potongan lain
-                    'jht_i' => $jhtI,
-                    'jp_i' => $jpI,
-                    'bpjs_kes_i' => $bpjsKesI,
-                    'bpjs_kes_tidak_ditanggung' => $bpjsKesTdakDitanggung,
-                    'matan' => $matan,
-                    'lazismu' => $lazismu,
-                    'obat2an' => $obat2an,
-                    'hutang_bpjs' => $hutangBpjs,
-                    'hutang_seragam' => $hutangSeragam,
-                    'ikkm' => $ikkm,
-                    'lain_pot' => $lainPot,
-                    // Totals
-                    'jumlah' => $jumlah,
-                    'jumlah_tunjangan' => $jumlahTunjangan,
-                    'jumlah_pot' => $jumlahPot,
-                    // Default status = draft (belum bisa diakses via API)
+                    'salary_no' => $mapped['salary_no'],
+                    'ref_no' => $mapped['ref_no'],
+                    'penerimaan' => $mapped['penerimaan'],
+                    'pembulatan' => $mapped['pembulatan'],
+                    'pajak' => $mapped['pajak'],
+                    'zakat' => $mapped['zakat'],
+                    'gaji_pokok' => $mapped['gaji_pokok'],
+                    'keluarga' => $mapped['keluarga'],
+                    'tunj_masa_kerja' => $mapped['tunj_masa_kerja'],
+                    'tunj_kehadiran' => $mapped['tunj_kehadiran'],
+                    'tunj_makan' => $mapped['tunj_makan'],
+                    'fungsional' => $mapped['fungsional'],
+                    'struktural' => $mapped['struktural'],
+                    'operasional' => $mapped['operasional'],
+                    'transport_spj' => $mapped['transport_spj'],
+                    'jm_dokter' => $mapped['jm_dokter'],
+                    'lembur' => $mapped['lembur'],
+                    'on_call' => $mapped['on_call'],
+                    'lain_lain' => $mapped['lain_lain'],
+                    'jkn' => $mapped['jkn'],
+                    'jkn_label' => $mapped['jkn_label'],
+                    'umum' => $mapped['umum'],
+                    'umum_label' => $mapped['umum_label'],
+                    'jkn_susulan' => $mapped['jkn_susulan'],
+                    'jkn_susulan_l' => $mapped['jkn_susulan_l'],
+                    'jkk' => $mapped['jkk'],
+                    'jkm' => $mapped['jkm'],
+                    'jht' => $mapped['jht'],
+                    'jp' => $mapped['jp'],
+                    'tunj_bpjs_tk' => $mapped['tunj_bpjs_tk'],
+                    'bpjs_kes' => $mapped['bpjs_kes'],
+                    'jkk_k' => $mapped['jkk_k'],
+                    'jkm_k' => $mapped['jkm_k'],
+                    'jht_k' => $mapped['jht_k'],
+                    'jp_k' => $mapped['jp_k'],
+                    'pot_bpjs_tk' => $mapped['pot_bpjs_tk'],
+                    'bpjs_kes_k' => $mapped['bpjs_kes_k'],
+                    'jht_i' => $mapped['jht_i'],
+                    'jp_i' => $mapped['jp_i'],
+                    'bpjs_kes_i' => $mapped['bpjs_kes_i'],
+                    'bpjs_kes_tidak_ditanggung' => $mapped['bpjs_kes_tidak_ditanggung'],
+                    'matan' => $mapped['matan'],
+                    'lazismu' => $mapped['lazismu'],
+                    'obat2an' => $mapped['obat2an'],
+                    'hutang_bpjs' => $mapped['hutang_bpjs'],
+                    'hutang_seragam' => $mapped['hutang_seragam'],
+                    'ikkm' => $mapped['ikkm'],
+                    'lain_pot' => $mapped['lain_pot'],
+                    'jumlah' => $mapped['jumlah'],
+                    'jumlah_tunjangan' => $mapped['jumlah_tunjangan'],
+                    'jumlah_pot' => $mapped['jumlah_pot'],
                     'status' => 'draft',
-                    // Raw data
                     'raw_row' => $raw,
                 ]
             );
@@ -196,8 +124,8 @@ class EmployeeSalaryImportService
             $allSalaries[] = [
                 'nik' => $nik,
                 'nama' => $nama,
-                'penerimaan' => (float) ($penerimaan ?? 0),
-                'pajak' => (float) ($pajak ?? 0),
+                'penerimaan' => (float) ($mapped['penerimaan'] ?? 0),
+                'pajak' => (float) ($mapped['pajak'] ?? 0),
             ];
 
             $imported++;
@@ -218,35 +146,6 @@ class EmployeeSalaryImportService
             'warnings' => $warnings,
             'import_id' => $payrollImport->id,
         ];
-    }
-
-    /**
-     * Parse JKN from raw row - tries multiple column names
-     */
-    private function parseJknFromRaw(array $raw): ?string
-    {
-        // Try common patterns for JKN column
-        $patterns = [
-            'jkn_februari_2026',
-            'jkn_feb_2026',
-            'jkn',
-        ];
-
-        foreach ($patterns as $pattern) {
-            $value = $raw[$pattern] ?? null;
-            if ($value !== null && $value !== '' && $value !== '-') {
-                return $this->moneyOrNull($value);
-            }
-        }
-
-        // Try regex for "jkn ..." pattern
-        foreach ($raw as $key => $value) {
-            if (preg_match('/^jkn\s/i', $key) && str_contains(mb_strtolower($key), '2026')) {
-                return $this->moneyOrNull($value);
-            }
-        }
-
-        return null;
     }
 
     /**

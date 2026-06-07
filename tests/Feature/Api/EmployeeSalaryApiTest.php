@@ -22,6 +22,7 @@ test('user can only see own salaries', function () {
         'penerimaan' => '1000000',
         'pajak' => '10000',
         'zakat' => '0',
+        'status' => 'published',
         'raw_row' => ['nik' => $me->simrs_nik],
     ]);
 
@@ -33,6 +34,7 @@ test('user can only see own salaries', function () {
         'penerimaan' => '999999',
         'pajak' => '0',
         'zakat' => '0',
+        'status' => 'published',
         'raw_row' => ['nik' => $other->simrs_nik],
     ]);
 
@@ -80,6 +82,7 @@ test('service token can list payroll with nik query', function () {
         'penerimaan' => '5000000',
         'pajak' => '0',
         'zakat' => '0',
+        'status' => 'published',
         'raw_row' => ['nik' => '03.09.07.1998'],
     ]);
 
@@ -105,6 +108,7 @@ test('service token can list payroll with simrs_nik query alias', function () {
         'penerimaan' => '1000',
         'pajak' => '0',
         'zakat' => '0',
+        'status' => 'published',
         'raw_row' => ['nik' => '88.88.88.8888'],
     ]);
 
@@ -129,6 +133,7 @@ test('service token can list payroll with X-Sifast-Nik header', function () {
         'penerimaan' => '3000000',
         'pajak' => '0',
         'zakat' => '0',
+        'status' => 'published',
         'raw_row' => ['nik' => '01.01.01.2001'],
     ]);
 

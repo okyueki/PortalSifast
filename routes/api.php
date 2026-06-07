@@ -1,9 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\ApiTicketController;
-use App\Http\Controllers\Api\DashboardActivityController;
-use App\Http\Controllers\Api\DashboardAnalyticsController;
-use App\Http\Controllers\Api\DashboardNotificationController;
 use App\Http\Controllers\Api\EmergencyDashboardController;
 use App\Http\Controllers\Api\EmergencyReportController;
 use App\Http\Controllers\Api\EmployeeSalaryController;
@@ -153,10 +150,4 @@ Route::get('/health', function () {
     ]);
 });
 
-// Dashboard API endpoints (authenticated)
-Route::middleware('auth:sanctum')->prefix('dashboard')->group(function () {
-    Route::get('/analytics', [DashboardAnalyticsController::class, 'index']);
-    Route::get('/activities', [DashboardActivityController::class, 'index']);
-    Route::get('/notifications', [DashboardNotificationController::class, 'index']);
-    Route::post('/notifications/mark-read', [DashboardNotificationController::class, 'markAsRead']);
-});
+// Dashboard API endpoints removed - moved to web.php for Inertia compatibility

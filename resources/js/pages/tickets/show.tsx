@@ -21,6 +21,7 @@ import {
     Wrench,
     AlertCircle,
     ChevronDown,
+    Sparkles,
 } from 'lucide-react';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -471,6 +472,8 @@ export default function TicketShow({
     const [showVendorCostForm, setShowVendorCostForm] = useState(false);
     const [showSparepartForm, setShowSparepartForm] = useState(false);
     const [showIssueForm, setShowIssueForm] = useState(false);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [docLoading, setDocLoading] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<{
         type: 'attachment' | 'vendor_cost' | 'collaborator' | 'sparepart';
         id: number;
@@ -489,6 +492,42 @@ export default function TicketShow({
         is_internal: false,
         is_resolution: false,
     });
+
+    // Bantuan AI — rekomendasi solusi
+    const handleBantuanAI = async () => {
+        setAiLoading(true);
+        try {
+            const response = await fetch(`/tickets/${ticket.id}/recommendation`);
+            const data = await response.json();
+            if (data.success && data.recommendation) {
+                commentForm.setData('body', data.recommendation);
+                commentForm.setData('is_resolution', false);
+                document.querySelector<HTMLTextAreaElement>('[data-comment-body]')?.focus();
+            }
+        } catch {
+            alert('Gagal generate bantuan AI. Coba lagi.');
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
+    // Generate Dokumen — format laporan resolution
+    const handleGenerateDoc = async () => {
+        setDocLoading(true);
+        try {
+            const response = await fetch(`/tickets/${ticket.id}/documentation`);
+            const data = await response.json();
+            if (data.success && data.documentation) {
+                commentForm.setData('body', data.documentation);
+                commentForm.setData('is_resolution', true);
+                document.querySelector<HTMLTextAreaElement>('[data-comment-body]')?.focus();
+            }
+        } catch {
+            alert('Gagal generate dokumen. Coba lagi.');
+        } finally {
+            setDocLoading(false);
+        }
+    };
 
     const commentBodyRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -935,9 +974,57 @@ export default function TicketShow({
                                                 onSubmit={handleCommentSubmit}
                                                 className="space-y-3 pt-3 border-t"
                                             >
+                                                {/* Bantuan AI buttons */}
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={handleBantuanAI}
+                                                        disabled={aiLoading}
+                                                        className="gap-1.5"
+                                                    >
+                                                        {aiLoading ? (
+                                                            <>
+                                                                <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                                                Merekomendasikan...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Sparkles className="size-4 text-primary" />
+                                                                <span>Bantuan AI</span>
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={handleGenerateDoc}
+                                                        disabled={docLoading}
+                                                        className="gap-1.5"
+                                                    >
+                                                        {docLoading ? (
+                                                            <>
+                                                                <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                                                Generating...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <FileText className="size-4 text-muted-foreground" />
+                                                                <span>Generate Dokumen</span>
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    <span className="font-medium">Bantuan AI</span> — saran langkah solusi.
+                                                    {' '}<span className="font-medium">Generate Dokumen</span> — format laporan resolution.
+                                                </p>
                                                 <Textarea
                                                     ref={commentBodyRef}
-                                                    placeholder="Tulis komentar..."
+                                                    data-comment-body
+                                                    placeholder="Tulis komentar... atau klik 'Bantuan AI' untuk generate otomatis"
                                                     value={commentForm.data.body}
                                                     onChange={(e) =>
                                                         commentForm.setData('body', e.target.value)

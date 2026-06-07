@@ -9,6 +9,7 @@ use App\Models\PayrollImport;
 use App\Models\User;
 use App\Services\EmployeeSalaryImportService;
 use App\Services\FcmNotificationService;
+use App\Support\PayrollCsvMapper;
 use App\Support\PayrollSlipMath;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -320,74 +321,14 @@ class EmployeeSalaryWebImportController extends Controller
 
         $employeeSalary->load(['user', 'importer', 'pegawai']);
 
-        $masaKerja = $this->calculateMasaKerja($employeeSalary);
         $gajiBersih = PayrollSlipMath::resolveGajiBersih($employeeSalary);
+        $raw = is_array($employeeSalary->raw_row) ? $employeeSalary->raw_row : [];
 
         return Inertia::render('payroll/show', [
-            'salary' => [
-                'id' => $employeeSalary->id,
-                'period_start' => $employeeSalary->period_start?->toDateString(),
-                'simrs_nik' => $employeeSalary->simrs_nik,
-                'employee_name' => $employeeSalary->employee_name,
-                'unit' => $employeeSalary->unit,
-                'npwp' => $employeeSalary->npwp ?? $employeeSalary->pegawai?->npwp,
-                'phone' => $employeeSalary->phone,
-                'ref_no' => $employeeSalary->ref_no,
-                'salary_no' => $employeeSalary->salary_no,
-                'penerimaan' => $employeeSalary->penerimaan,
-                'pembulatan' => $employeeSalary->pembulatan,
-                'pajak' => $employeeSalary->pajak,
-                'zakat' => $employeeSalary->zakat,
-                'denominados' => $this->spellCurrency((string) $gajiBersih),
-                'masa_kerja' => $masaKerja,
-                // Komponen Pendapatan
-                'gaji_pokok' => $employeeSalary->gaji_pokok,
-                'keluarga' => $employeeSalary->keluarga,
-                'fungsional' => $employeeSalary->fungsional,
-                'struktural' => $employeeSalary->struktural,
-                'operasional' => $employeeSalary->operasional,
-                'transport_spj' => $employeeSalary->transport_spj,
-                'jm_dokter' => $employeeSalary->jm_dokter,
-                'lembur' => $employeeSalary->lembur,
-                'on_call' => $employeeSalary->on_call,
-                'lain_lain' => $employeeSalary->lain_lain,
-                // JKN
-                'jkn' => $employeeSalary->jkn,
-                'umum' => $employeeSalary->umum,
-                'jkn_susulan' => $employeeSalary->jkn_susulan,
-                'jkn_susulan_l' => $employeeSalary->jkn_susulan_l,
-                // BPJS TK Perusahaan
-                'jkk' => $employeeSalary->jkk,
-                'jkm' => $employeeSalary->jkm,
-                'jht' => $employeeSalary->jht,
-                'jp' => $employeeSalary->jp,
-                'tunj_bpjs_tk' => $employeeSalary->tunj_bpjs_tk,
-                'bpjs_kes' => $employeeSalary->bpjs_kes,
-                // BPJS TK Karyawan
-                'jkk_k' => $employeeSalary->jkk_k,
-                'jkm_k' => $employeeSalary->jkm_k,
-                'jht_k' => $employeeSalary->jht_k,
-                'jp_k' => $employeeSalary->jp_k,
-                'pot_bpjs_tk' => $employeeSalary->pot_bpjs_tk,
-                'bpjs_kes_k' => $employeeSalary->bpjs_kes_k,
-                // Iuran
-                'jht_i' => $employeeSalary->jht_i,
-                'jp_i' => $employeeSalary->jp_i,
-                'bpjs_kes_i' => $employeeSalary->bpjs_kes_i,
-                'bpjs_kes_tidak_ditanggung' => $employeeSalary->bpjs_kes_tidak_ditanggung,
-                // Potongan Lain
-                'matan' => $employeeSalary->matan,
-                'lazismu' => $employeeSalary->lazismu,
-                'obat2an' => $employeeSalary->obat2an,
-                'hutang_bpjs' => $employeeSalary->hutang_bpjs,
-                'hutang_seragam' => $employeeSalary->hutang_seragam,
-                'ikkm' => $employeeSalary->ikkm,
-                'lain_pot' => $employeeSalary->lain_pot,
-                // Totals
-                'jumlah' => $employeeSalary->jumlah,
-                'jumlah_tunjangan' => $employeeSalary->jumlah_tunjangan,
-                'jumlah_pot' => $employeeSalary->jumlah_pot,
-            ],
+            'salary' => $this->formatSalaryPayload($employeeSalary, $gajiBersih),
+            'csv_verification' => $raw !== []
+                ? PayrollCsvMapper::buildVerificationRows($raw, $employeeSalary->getAttributes())
+                : [],
         ]);
     }
 
@@ -398,77 +339,82 @@ class EmployeeSalaryWebImportController extends Controller
             abort(403, 'Hanya admin dan staff yang dapat melihat gaji.');
         }
 
-        $employeeSalary->load(['user', 'importer']);
+        $employeeSalary->load(['user', 'importer', 'pegawai']);
 
-        $masaKerja = $this->calculateMasaKerja($employeeSalary);
         $gajiBersih = PayrollSlipMath::resolveGajiBersih($employeeSalary);
 
         return Inertia::render('payroll/print', [
-            'salary' => [
-                'id' => $employeeSalary->id,
-                'period_start' => $employeeSalary->period_start?->toDateString(),
-                'simrs_nik' => $employeeSalary->simrs_nik,
-                'employee_name' => $employeeSalary->employee_name,
-                'unit' => $employeeSalary->unit,
-                'npwp' => $employeeSalary->npwp ?? $employeeSalary->pegawai?->npwp,
-                'phone' => $employeeSalary->phone,
-                'ref_no' => $employeeSalary->ref_no,
-                'salary_no' => $employeeSalary->salary_no,
-                'penerimaan' => $employeeSalary->penerimaan,
-                'pembulatan' => $employeeSalary->pembulatan,
-                'pajak' => $employeeSalary->pajak,
-                'zakat' => $employeeSalary->zakat,
-                'denominados' => $this->spellCurrency((string) $gajiBersih),
-                'masa_kerja' => $masaKerja,
-                // Komponen Pendapatan
-                'gaji_pokok' => $employeeSalary->gaji_pokok,
-                'keluarga' => $employeeSalary->keluarga,
-                'fungsional' => $employeeSalary->fungsional,
-                'struktural' => $employeeSalary->struktural,
-                'operasional' => $employeeSalary->operasional,
-                'transport_spj' => $employeeSalary->transport_spj,
-                'jm_dokter' => $employeeSalary->jm_dokter,
-                'lembur' => $employeeSalary->lembur,
-                'on_call' => $employeeSalary->on_call,
-                'lain_lain' => $employeeSalary->lain_lain,
-                // JKN
-                'jkn' => $employeeSalary->jkn,
-                'umum' => $employeeSalary->umum,
-                'jkn_susulan' => $employeeSalary->jkn_susulan,
-                'jkn_susulan_l' => $employeeSalary->jkn_susulan_l,
-                // BPJS TK Perusahaan
-                'jkk' => $employeeSalary->jkk,
-                'jkm' => $employeeSalary->jkm,
-                'jht' => $employeeSalary->jht,
-                'jp' => $employeeSalary->jp,
-                'tunj_bpjs_tk' => $employeeSalary->tunj_bpjs_tk,
-                'bpjs_kes' => $employeeSalary->bpjs_kes,
-                // BPJS TK Karyawan
-                'jkk_k' => $employeeSalary->jkk_k,
-                'jkm_k' => $employeeSalary->jkm_k,
-                'jht_k' => $employeeSalary->jht_k,
-                'jp_k' => $employeeSalary->jp_k,
-                'pot_bpjs_tk' => $employeeSalary->pot_bpjs_tk,
-                'bpjs_kes_k' => $employeeSalary->bpjs_kes_k,
-                // Iuran
-                'jht_i' => $employeeSalary->jht_i,
-                'jp_i' => $employeeSalary->jp_i,
-                'bpjs_kes_i' => $employeeSalary->bpjs_kes_i,
-                'bpjs_kes_tidak_ditanggung' => $employeeSalary->bpjs_kes_tidak_ditanggung,
-                // Potongan Lain
-                'matan' => $employeeSalary->matan,
-                'lazismu' => $employeeSalary->lazismu,
-                'obat2an' => $employeeSalary->obat2an,
-                'hutang_bpjs' => $employeeSalary->hutang_bpjs,
-                'hutang_seragam' => $employeeSalary->hutang_seragam,
-                'ikkm' => $employeeSalary->ikkm,
-                'lain_pot' => $employeeSalary->lain_pot,
-                // Totals
-                'jumlah' => $employeeSalary->jumlah,
-                'jumlah_tunjangan' => $employeeSalary->jumlah_tunjangan,
-                'jumlah_pot' => $employeeSalary->jumlah_pot,
-            ],
+            'salary' => $this->formatSalaryPayload($employeeSalary, $gajiBersih),
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatSalaryPayload(EmployeeSalary $employeeSalary, float $gajiBersih): array
+    {
+        return [
+            'id' => $employeeSalary->id,
+            'period_start' => $employeeSalary->period_start?->toDateString(),
+            'simrs_nik' => $employeeSalary->simrs_nik,
+            'employee_name' => $employeeSalary->employee_name,
+            'unit' => $employeeSalary->unit,
+            'npwp' => $employeeSalary->npwp ?? $employeeSalary->pegawai?->npwp,
+            'phone' => $employeeSalary->phone,
+            'ref_no' => $employeeSalary->ref_no,
+            'salary_no' => $employeeSalary->salary_no,
+            'penerimaan' => $employeeSalary->penerimaan,
+            'pembulatan' => $employeeSalary->pembulatan,
+            'pajak' => $employeeSalary->pajak,
+            'zakat' => $employeeSalary->zakat,
+            'denominados' => $this->spellCurrency((string) $gajiBersih),
+            'masa_kerja' => $this->calculateMasaKerja($employeeSalary),
+            'gaji_pokok' => $employeeSalary->gaji_pokok,
+            'keluarga' => $employeeSalary->keluarga,
+            'tunj_masa_kerja' => $employeeSalary->tunj_masa_kerja,
+            'tunj_kehadiran' => $employeeSalary->tunj_kehadiran,
+            'tunj_makan' => $employeeSalary->tunj_makan,
+            'fungsional' => $employeeSalary->fungsional,
+            'struktural' => $employeeSalary->struktural,
+            'operasional' => $employeeSalary->operasional,
+            'transport_spj' => $employeeSalary->transport_spj,
+            'jm_dokter' => $employeeSalary->jm_dokter,
+            'lembur' => $employeeSalary->lembur,
+            'on_call' => $employeeSalary->on_call,
+            'lain_lain' => $employeeSalary->lain_lain,
+            'jkn' => $employeeSalary->jkn,
+            'jkn_label' => $employeeSalary->jkn_label,
+            'umum' => $employeeSalary->umum,
+            'umum_label' => $employeeSalary->umum_label,
+            'jkn_susulan' => $employeeSalary->jkn_susulan,
+            'jkn_susulan_l' => $employeeSalary->jkn_susulan_l,
+            'jkk' => $employeeSalary->jkk,
+            'jkm' => $employeeSalary->jkm,
+            'jht' => $employeeSalary->jht,
+            'jp' => $employeeSalary->jp,
+            'tunj_bpjs_tk' => $employeeSalary->tunj_bpjs_tk,
+            'bpjs_kes' => $employeeSalary->bpjs_kes,
+            'jkk_k' => $employeeSalary->jkk_k,
+            'jkm_k' => $employeeSalary->jkm_k,
+            'jht_k' => $employeeSalary->jht_k,
+            'jp_k' => $employeeSalary->jp_k,
+            'pot_bpjs_tk' => $employeeSalary->pot_bpjs_tk,
+            'bpjs_kes_k' => $employeeSalary->bpjs_kes_k,
+            'jht_i' => $employeeSalary->jht_i,
+            'jp_i' => $employeeSalary->jp_i,
+            'bpjs_kes_i' => $employeeSalary->bpjs_kes_i,
+            'bpjs_kes_tidak_ditanggung' => $employeeSalary->bpjs_kes_tidak_ditanggung,
+            'matan' => $employeeSalary->matan,
+            'lazismu' => $employeeSalary->lazismu,
+            'obat2an' => $employeeSalary->obat2an,
+            'hutang_bpjs' => $employeeSalary->hutang_bpjs,
+            'hutang_seragam' => $employeeSalary->hutang_seragam,
+            'ikkm' => $employeeSalary->ikkm,
+            'lain_pot' => $employeeSalary->lain_pot,
+            'jumlah' => $employeeSalary->jumlah,
+            'jumlah_tunjangan' => $employeeSalary->jumlah_tunjangan,
+            'jumlah_pot' => $employeeSalary->jumlah_pot,
+        ];
     }
 
     public function create(): Response

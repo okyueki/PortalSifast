@@ -1,7 +1,8 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, Paperclip, X } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import ReactSelect, { type SingleValue } from 'react-select';
+import { useState, useEffect, useMemo } from 'react';
+import ReactSelect, { type SingleValue, type MultiValue } from 'react-select';
+import CreatableSelect from 'react-select/creatable';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { InventarisSearchInput } from '@/components/inventaris-search-input';
@@ -89,13 +90,87 @@ export default function TicketCreate({
 
     const [filteredCategories, setFilteredCategories] = useState<TicketCategory[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<TicketCategory | null>(null);
-    const relatedTicketOptions: RelatedTicketOption[] = recentTicketsForLink.map((ticket) => ({
-        value: String(ticket.id),
-        label: `${ticket.ticket_number} - ${ticket.title}`,
-        ticketNumber: ticket.ticket_number,
-        title: ticket.title,
-        createdAt: ticket.created_at,
-    }));
+    const [newTags, setNewTags] = useState<string[]>([]);
+    const [newProjectName, setNewProjectName] = useState<string | null>(null);
+
+    const handleTagChange = (selected: MultiValue<{ value: string; label: string }>) => {
+        const existingIds: number[] = [];
+        const newTagNames: string[] = [];
+
+        selected.forEach((s) => {
+            const num = Number(s.value);
+            if (Number.isInteger(num)) {
+                existingIds.push(num);
+            } else {
+                newTagNames.push(s.label);
+            }
+        });
+
+        setData('tag_ids', existingIds);
+        setNewTags(newTagNames);
+    };
+
+    const handleTagCreate = (inputValue: string) => {
+        if (!newTags.includes(inputValue)) {
+            setNewTags([...newTags, inputValue]);
+        }
+    };
+
+    // Project handling
+    const projectOptions = projects.map((p) => ({ value: String(p.id), label: p.name }));
+    const selectedProjectValue = newProjectName
+        ? { value: newProjectName, label: newProjectName }
+        : data.project_id !== ''
+          ? projectOptions.find((p) => p.value === String(data.project_id)) ?? null
+          : null;
+
+    const handleProjectChange = (selected: SingleValue<{ value: string; label: string }> | null) => {
+        if (!selected) {
+            setNewProjectName(null);
+            setData('project_id', '');
+        } else {
+            const num = Number(selected.value);
+            if (Number.isInteger(num)) {
+                setNewProjectName(null);
+                setData('project_id', selected.value);
+            } else {
+                setNewProjectName(selected.label);
+                setData('project_id', '');
+            }
+        }
+    };
+
+    const handleProjectCreate = (inputValue: string) => {
+        setNewProjectName(inputValue);
+        setData('project_id', '');
+    };
+
+    // Build tag options for CreatableSelect
+    const tagOptions = tags.map((t) => ({ value: String(t.id), label: t.name }));
+
+    // Build selected tag values (existing + newly created)
+    const selectedTagValues: Array<{ value: string; label: string }> = [
+        ...data.tag_ids
+            .map((id) => {
+                const tag = tags.find((t) => t.id === id);
+                return tag ? { value: String(tag.id), label: tag.name } : null;
+            })
+            .filter((v): v is { value: string; label: string } => v !== null),
+        ...newTags.map((name) => ({ value: name, label: name })),
+    ];
+
+    // Memoize related ticket options to prevent unnecessary re-renders
+    const relatedTicketOptions = useMemo(() =>
+        recentTicketsForLink.map((ticket) => ({
+            value: String(ticket.id),
+            label: `${ticket.ticket_number} - ${ticket.title}`,
+            ticketNumber: ticket.ticket_number,
+            title: ticket.title,
+            createdAt: ticket.created_at,
+        })),
+        [recentTicketsForLink]
+    );
+
     const selectedRelatedTicketOption =
         relatedTicketOptions.find((option) => option.value === data.related_ticket_id) ?? null;
 
@@ -159,8 +234,12 @@ export default function TicketCreate({
             }
             payload.asset_no_inventaris = formData.asset_no_inventaris || null;
             payload.tag_ids = Array.isArray(formData.tag_ids) ? formData.tag_ids : [];
+            payload.new_tag_names = newTags; // Include new tags to be created
             payload.created_at = formData.created_at && String(formData.created_at).trim() ? formData.created_at : null;
-            payload.project_id = formData.project_id && formData.project_id !== '_none' ? (typeof formData.project_id === 'number' ? formData.project_id : parseInt(String(formData.project_id), 10)) : null;
+            payload.project_id = formData.project_id !== ''
+                ? parseInt(String(formData.project_id), 10)
+                : null;
+            payload.new_project_name = newProjectName; // Include new project to be created
             payload.budget_estimate = String(formData.budget_estimate).trim() !== '' ? parseInt(String(formData.budget_estimate), 10) : null;
 
             if (hasAttachments) {
@@ -420,65 +499,46 @@ export default function TicketCreate({
                     )}
 
                     {/* Project / Rencana (opsional) */}
-                    {projects.length > 0 && (
-                        <div className="grid gap-2">
-                            <Label htmlFor="project_id">Rencana / Project (opsional)</Label>
-                            <Select
-                                value={data.project_id === null || data.project_id === '' ? '_none' : String(data.project_id)}
-                                onValueChange={(v) => setData('project_id', v === '_none' ? '' : v)}
-                            >
-                                <SelectTrigger id="project_id">
-                                    <SelectValue placeholder="Pilih project untuk tracking..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="_none">Tidak ada</SelectItem>
-                                    {projects.map((p) => (
-                                        <SelectItem key={p.id} value={String(p.id)}>
-                                            {p.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <p className="text-xs text-muted-foreground">
-                                Kelompokkan tiket ke dalam rencana/proyek untuk tracking pekerjaan besar.
-                            </p>
-                            <InputError message={errors.project_id} />
-                        </div>
-                    )}
+                    <div className="grid gap-2">
+                        <Label htmlFor="project_id">Rencana / Project (opsional)</Label>
+                        <CreatableSelect
+                            inputId="project_id"
+                            placeholder="Pilih atau ketik untuk membuat project baru..."
+                            noOptionsMessage={() => 'Ketik untuk membuat project baru'}
+                            options={projectOptions}
+                            value={selectedProjectValue}
+                            onChange={handleProjectChange}
+                            onCreateOption={handleProjectCreate}
+                            formatCreateLabel={(inputValue: string) => `Buat project baru: "${inputValue}"`}
+                            isClearable
+                            className="text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Kelompokkan tiket ke dalam rencana/proyek untuk tracking pekerjaan besar.
+                        </p>
+                        <InputError message={errors.project_id} />
+                    </div>
 
                     {/* Tags */}
-                    {tags.length > 0 && (
-                        <div className="grid gap-2">
-                            <Label>Tag / Pengelompokan (opsional)</Label>
-                            <p className="text-xs text-muted-foreground">
-                                Centang satu atau lebih tag untuk memudahkan pencarian dan referensi solusi nanti (Knowledge Base).
-                            </p>
-                            <div className="flex flex-wrap gap-3 rounded-md border p-3">
-                                {tags.map((tag) => (
-                                    <label
-                                        key={tag.id}
-                                        className="flex cursor-pointer items-center gap-2 text-sm"
-                                    >
-                                        <Checkbox
-                                            checked={data.tag_ids.includes(tag.id)}
-                                            onCheckedChange={(checked) => {
-                                                if (checked) {
-                                                    setData('tag_ids', [...data.tag_ids, tag.id]);
-                                                } else {
-                                                    setData(
-                                                        'tag_ids',
-                                                        data.tag_ids.filter((id) => id !== tag.id)
-                                                    );
-                                                }
-                                            }}
-                                        />
-                                        <span>{tag.name}</span>
-                                    </label>
-                                ))}
-                            </div>
-                            <InputError message={errors.tag_ids} />
-                        </div>
-                    )}
+                    <div className="grid gap-2">
+                        <Label htmlFor="tag_ids">Tag / Pengelompokan (opsional)</Label>
+                        <CreatableSelect
+                            isMulti
+                            inputId="tag_ids"
+                            placeholder="Pilih atau ketik untuk membuat tag baru..."
+                            noOptionsMessage={() => 'Ketik untuk membuat tag baru'}
+                            options={tagOptions}
+                            value={selectedTagValues}
+                            onChange={handleTagChange}
+                            onCreateOption={handleTagCreate}
+                            formatCreateLabel={(inputValue: string) => `Buat tag baru: "${inputValue}"`}
+                            className="text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Pilih satu atau lebih tag untuk mengelompokkan tiket. Ketik nama baru dan tekan Enter untuk membuat tag baru.
+                        </p>
+                        <InputError message={errors.tag_ids} />
+                    </div>
 
                     {/* Inventaris / Asset */}
                     <div className="grid gap-2">

@@ -1,0 +1,4 @@
+{
+  "summary": "Reviewed and enhanced payroll API for mobile apps: added PayrollSlipStructure PHP helper aligned with web slip logic, updated GET /api/sifast/payroll list with summary totals, restructured GET detail response with totals, slip_sections (ready-to-render), and components (backward compatible). Removed raw_row from detail API. Added EmployeeSalarySlipApiTest.",
+  "current_status": "Mobile API now exposes computed jumlah_tunjangan (section 2+3), jumlah_gaji, jumlah_potongan, gaji_bersih and structured slip_sections. Existing API tests updated with published status."
+}

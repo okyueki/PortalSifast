@@ -1,0 +1,4 @@
+{
+  "summary": "Fixed Jumlah Tunjangan formula to match RS slip: now equals section 2 (Tunjangan) + section 3 (Lain-Lain), not section 2 alone. Updated computeSlipTotals so Jumlah Gaji = Kehadiran + Jumlah Tunjangan without double-counting lain-lain. Added PayrollSlipTotalsTest documenting NIK 76.01.08.2012 case (13,534,281). Frontend build passed.",
+  "current_status": "Payroll slip totals aligned with official RS structure. Jumlah Tunjangan includes remunerasi and other lain-lain items. Refresh show/print pages to verify."
+}

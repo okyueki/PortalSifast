@@ -1,0 +1,4 @@
+{
+  "summary": "Diagnosed CSV vs display mismatch: CSV uses column names like tunjangan_keluarga, fungsional_profesi, jkn_maret_2026, umumapril_2026 which were not mapped during import. Added PayrollCsvMapper, fixed import mapping, new DB columns (tunj_masa_kerja, tunj_kehadiran, tunj_makan, jkn_label, umum_label), payroll:reprocess-from-raw command, shared slip structure matching user's 4-section format, and CSV verification table on show page.",
+  "current_status": "Payroll import mapping fixed. Slip show/print now displays all components per official structure. Show page has Verifikasi CSV vs Database table. Run php artisan payroll:reprocess-from-raw to backfill existing imports. Salary 274 reprocessed successfully."
+}

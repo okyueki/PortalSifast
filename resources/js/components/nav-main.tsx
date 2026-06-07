@@ -19,22 +19,57 @@ export function NavMain({ items = [], label = 'Platform' }: NavMainProps) {
 
     return (
         <SidebarGroup className="px-2 py-0">
-            <SidebarGroupLabel>{label}</SidebarGroupLabel>
-            <SidebarMenu>
-                {items.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton
-                            asChild
-                            isActive={isCurrentUrl(item.href)}
-                            tooltip={{ children: item.title }}
-                        >
-                            <Link href={item.href} prefetch>
-                                {item.icon && <item.icon />}
-                                <span>{item.title}</span>
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                ))}
+            {label && (
+                <SidebarGroupLabel className="mb-1.5 mt-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted">
+                    {label}
+                </SidebarGroupLabel>
+            )}
+            <SidebarMenu className="gap-0.5">
+                {items.map((item) => {
+                    const active = isCurrentUrl(item.href);
+                    return (
+                        <SidebarMenuItem key={item.title}>
+                            <SidebarMenuButton
+                                asChild
+                                isActive={active}
+                                tooltip={{ children: item.title }}
+                                className="group relative"
+                            >
+                                <Link
+                                    href={item.href}
+                                    prefetch
+                                    className="cursor-pointer"
+                                >
+                                    {/* Active left indicator bar */}
+                                    {active && (
+                                        <span
+                                            className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-full bg-primary"
+                                            aria-hidden
+                                        />
+                                    )}
+                                    {item.icon && (
+                                        <item.icon
+                                            className={`size-[18px] shrink-0 transition-colors duration-150 ${
+                                                active
+                                                    ? 'text-primary'
+                                                    : 'text-sidebar-muted group-hover:text-sidebar-foreground'
+                                            }`}
+                                        />
+                                    )}
+                                    <span
+                                        className={`font-medium transition-colors duration-150 ${
+                                            active
+                                                ? 'text-primary'
+                                                : 'text-sidebar-foreground/70 group-hover:text-sidebar-foreground'
+                                        }`}
+                                    >
+                                        {item.title}
+                                    </span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    );
+                })}
             </SidebarMenu>
         </SidebarGroup>
     );

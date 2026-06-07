@@ -519,8 +519,39 @@ class TicketController extends Controller
             'resolution_due_at' => $slaDates['resolution_due_at'],
         ]);
 
-        if (! empty($validated['tag_ids'])) {
-            $ticket->tags()->sync($validated['tag_ids']);
+        // Handle tag_ids (existing tags)
+        $tagIds = ! empty($validated['tag_ids']) ? $validated['tag_ids'] : [];
+
+        // Handle new_tag_names (tags to be created)
+        if (! empty($validated['new_tag_names'])) {
+            foreach ($validated['new_tag_names'] as $tagName) {
+                $slug = \Illuminate\Support\Str::slug($tagName);
+                $tag = TicketTag::firstOrCreate(
+                    ['slug' => $slug],
+                    ['name' => $tagName, 'is_active' => true]
+                );
+                $tagIds[] = $tag->id;
+            }
+        }
+
+        // Sync all tags (existing + newly created)
+        if (! empty($tagIds)) {
+            $ticket->tags()->sync(array_unique($tagIds));
+        }
+
+        // Handle project (existing or new)
+        $projectId = $validated['project_id'] ?? null;
+
+        if (! $projectId && ! empty($validated['new_project_name'])) {
+            $project = Project::firstOrCreate(
+                ['name' => $validated['new_project_name']],
+                ['description' => 'Project dibuat otomatis dari tiket #'.$ticket->ticket_number]
+            );
+            $projectId = $project->id;
+        }
+
+        if ($projectId) {
+            $ticket->update(['project_id' => $projectId]);
         }
 
         if (! empty($validated['created_at'])) {

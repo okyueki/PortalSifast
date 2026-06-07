@@ -7,6 +7,7 @@ import {
     Clock,
     ListTodo,
     Users,
+    ArrowRight,
 } from 'lucide-react';
 import { QuickActionsBar } from '@/components/dashboard/QuickActionsBar';
 import { QuickCreateButton } from '@/components/dashboard/QuickCreateButton';
@@ -41,162 +42,129 @@ function getStatusColor(color: string | undefined): string {
     return (color && map[color]) || map.gray;
 }
 
-export default function TabOverview({
-    stats,
-    recentTickets,
-    overdueTickets,
-    unresolvedTickets,
-}: Props) {
+const statCards = [
+    {
+        href: '/tickets',
+        label: 'Tiket Open',
+        sublabel: 'Belum selesai',
+        value: (p: Props) => p.stats.total_open,
+        icon: ListTodo,
+        bgClass: 'bg-primary/10 text-primary',
+    },
+    {
+        href: '/tickets?include_closed=1&status=7',
+        label: 'Ditutup',
+        sublabel: 'Bulan ini',
+        value: (p: Props) => p.stats.total_closed_month,
+        icon: CheckCircle,
+        bgClass: 'bg-primary/10 text-primary',
+    },
+    {
+        href: '/tickets?status=6',
+        label: 'Tertunda',
+        sublabel: 'Melewati SLA',
+        value: (p: Props) => p.stats.overdue,
+        icon: AlertTriangle,
+        bgClass: 'bg-destructive/10 text-destructive',
+    },
+    {
+        href: '/tickets?assignee=me',
+        label: 'Ditugaskan',
+        sublabel: (p: Props) => `${p.stats.unassigned} belum ditugaskan`,
+        value: (p: Props) => p.stats.assigned_to_me,
+        icon: Clock,
+        bgClass: 'bg-primary/10 text-primary',
+    },
+];
+
+export default function TabOverview(props: Props) {
     return (
         <div className="space-y-6">
             <QuickActionsBar />
 
             {/* Stat cards */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <Link href="/tickets">
-                    <Card className="cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-primary/50">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Tiket Open
-                            </CardTitle>
-                            <ListTodo className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stats.total_open}</div>
-                            <p className="text-xs text-muted-foreground">
-                                Belum selesai
-                            </p>
-                        </CardContent>
-                    </Card>
-                </Link>
-                <Link href="/tickets?include_closed=1&status=7">
-                    <Card className="cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-primary/50">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Ditutup
-                            </CardTitle>
-                            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                {stats.total_closed_month}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Ditutup bulan ini
-                            </p>
-                        </CardContent>
-                    </Card>
-                </Link>
-                <Link
-                    href={`/tickets?created_from=${new Date().getFullYear()}-${String(
-                        new Date().getMonth() + 1
-                    ).padStart(2, '0')}-01&created_to=${new Date().getFullYear()}-${String(
-                        new Date().getMonth() + 1
-                    ).padStart(2, '0')}-31&status=6`}
-                >
-                    <Card className="cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-destructive/50">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Tertunda
-                            </CardTitle>
-                            <AlertTriangle className="h-4 w-4 text-destructive" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-destructive">
-                                {stats.overdue}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Melewati target SLA
-                            </p>
-                        </CardContent>
-                    </Card>
-                </Link>
-                <Link
-                    href={`/tickets?assignee=me&created_from=${new Date().getFullYear()}-${String(
-                        new Date().getMonth() + 1
-                    ).padStart(2, '0')}-01&created_to=${new Date().getFullYear()}-${String(
-                        new Date().getMonth() + 1
-                    ).padStart(2, '0')}-31&include_closed=1`}
-                >
-                    <Card className="cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-primary/50">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Ditugaskan ke Saya
-                            </CardTitle>
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                {stats.assigned_to_me}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                {stats.unassigned} belum ditugaskan
-                            </p>
-                        </CardContent>
-                    </Card>
-                </Link>
-            </div>
-
-            {/* User Online Widget */}
-            <div className="mt-6">
-                <UserPresenceWidget />
-            </div>
-
-            <div className="grid gap-6 lg:grid-cols-3">
-                {/* Tiket Terbaru — hanya status Baru */}
-                <Card className="border-yellow-200 dark:border-yellow-800/60">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle>Tiket Terbaru</CardTitle>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-stagger">
+                {statCards.map((card) => {
+                    const Icon = card.icon;
+                    return (
                         <Link
-                            href="/tickets"
-                            className="text-sm font-medium text-primary hover:underline"
+                            key={card.label}
+                            href={card.href}
+                            className="group card-refined block rounded-xl border border-border p-5"
                         >
-                            Lihat semua
+                            <div className="mb-3 flex items-center justify-between">
+                                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                    {card.label}
+                                </span>
+                                <div className={`flex size-8 items-center justify-center rounded-lg ${card.bgClass}`}>
+                                    <Icon className="size-4" />
+                                </div>
+                            </div>
+                            <div className="text-3xl font-bold tracking-tight text-foreground">
+                                {card.value(props)}
+                            </div>
+                            <div className="mt-1 text-xs text-muted-foreground">
+                                {typeof card.sublabel === 'function'
+                                    ? card.sublabel(props)
+                                    : card.sublabel}
+                            </div>
+                            <div className="mt-3 flex items-center gap-1 text-xs font-medium text-primary opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                                <span>Lihat</span>
+                                <ArrowRight className="size-3" />
+                            </div>
                         </Link>
+                    );
+                })}
+            </div>
+
+            <UserPresenceWidget />
+
+            {/* Ticket Lists */}
+            <div className="grid gap-5 lg:grid-cols-3">
+                {/* Tiket Terbaru */}
+                <Card className="card-refined overflow-hidden">
+                    <CardHeader className="border-b border-border/50 bg-muted/30 px-5 py-4">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-semibold">Tiket Terbaru</CardTitle>
+                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700">
+                                Baru
+                            </Badge>
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        {recentTickets.length > 0 ? (
-                            <ul className="space-y-3">
-                                {recentTickets.map((t) => (
+                    <CardContent className="p-3">
+                        {props.recentTickets.length > 0 ? (
+                            <ul className="space-y-2">
+                                {props.recentTickets.map((t) => (
                                     <li key={t.id}>
                                         <Link
                                             href={`/tickets/${t.id}`}
-                                            className="block rounded-lg border border-yellow-300/60 bg-yellow-50/80 p-3 transition-colors hover:bg-yellow-100/80 dark:border-yellow-700/50 dark:bg-yellow-950/30 dark:hover:bg-yellow-900/40"
+                                            className="group flex flex-col gap-2 rounded-lg border border-border bg-card p-3.5 transition-all duration-150 hover:border-primary/30 hover:bg-primary/[0.02]"
                                         >
                                             <div className="flex items-center justify-between gap-2">
-                                                <span className="font-mono text-sm font-medium">
+                                                <span className="font-mono text-xs font-semibold text-primary">
                                                     {t.ticket_number}
                                                 </span>
-                                                <Badge
-                                                    variant="outline"
-                                                    className={getStatusColor(
-                                                        t.status?.color
-                                                    )}
-                                                >
+                                                <Badge variant="outline" className={`text-[10px] ${getStatusColor(t.status?.color)}`}>
                                                     {t.status?.name}
                                                 </Badge>
                                             </div>
-                                            <p className="mt-1 truncate text-sm">
+                                            <p className="text-sm leading-snug text-foreground line-clamp-2">
                                                 {t.title}
                                             </p>
-                                            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                                                 <span className="flex items-center gap-1">
-                                                    <UserCircle className="h-3 w-3" />
-                                                    <span className="text-foreground">
-                                                        {t.requester?.name || '-'}
-                                                    </span>
+                                                    <UserCircle className="size-3" />
+                                                    {t.requester?.name || '-'}
                                                 </span>
                                                 {t.assignee ? (
                                                     <span className="flex items-center gap-1">
-                                                        <span className="text-muted-foreground">
-                                                            →
-                                                        </span>
-                                                        <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
-                                                            {t.assignee.name}
+                                                        <ArrowRight className="size-2 opacity-50" />
+                                                        <span className="rounded bg-primary/10 px-1.5 py-0.5 font-medium text-primary">
+                                                            {t.assignee.name.split(' ')[0]}
                                                         </span>
                                                     </span>
                                                 ) : (
-                                                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                                    <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
                                                         Belum ditugaskan
                                                     </span>
                                                 )}
@@ -206,72 +174,69 @@ export default function TabOverview({
                                 ))}
                             </ul>
                         ) : (
-                            <p className="py-8 text-center text-sm text-muted-foreground">
-                                Belum ada tiket dengan status Baru
-                            </p>
+                            <div className="flex flex-col items-center justify-center py-10 text-center">
+                                <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-primary/10">
+                                    <CheckCircle className="size-5 text-primary" />
+                                </div>
+                                <p className="text-sm text-muted-foreground">Belum ada tiket baru</p>
+                            </div>
                         )}
                     </CardContent>
                 </Card>
 
                 {/* Tiket Terlambat */}
-                <Card className="border-destructive/50">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-destructive">
-                            Tiket Menggantung
-                        </CardTitle>
-                        <Link
-                            href="/tickets"
-                            className="text-sm font-medium text-primary hover:underline"
-                        >
-                            Lihat
-                        </Link>
+                <Card className="card-refined overflow-hidden">
+                    <CardHeader className="border-b border-border/50 bg-destructive/5 px-5 py-4">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="flex items-center gap-2 text-sm font-semibold text-destructive">
+                                <AlertTriangle className="size-4" />
+                                Tertunda
+                            </CardTitle>
+                            {props.overdueTickets.length > 0 && (
+                                <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">
+                                    {props.overdueTickets.length}
+                                </Badge>
+                            )}
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        {overdueTickets.length > 0 ? (
-                            <ul className="space-y-3">
-                                {overdueTickets.map((t) => (
+                    <CardContent className="p-3">
+                        {props.overdueTickets.length > 0 ? (
+                            <ul className="space-y-2">
+                                {props.overdueTickets.map((t) => (
                                     <li key={t.id}>
                                         <Link
                                             href={`/tickets/${t.id}`}
-                                            className="block rounded-lg border border-destructive/30 bg-destructive/5 p-3 transition-colors hover:bg-destructive/10"
+                                            className="group flex flex-col gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3.5 transition-all duration-150 hover:border-destructive/40 hover:bg-destructive/10"
                                         >
                                             <div className="flex items-center justify-between gap-2">
-                                                <span className="font-mono text-sm font-medium">
+                                                <span className="font-mono text-xs font-semibold text-destructive">
                                                     {t.ticket_number}
                                                 </span>
-                                                <span className="text-xs text-destructive">
-                                                    Target:{' '}
+                                                <span className="text-[10px] font-medium text-destructive">
                                                     {t.resolution_due_at
-                                                        ? new Date(
-                                                              t.resolution_due_at
-                                                          ).toLocaleDateString(
-                                                              'id-ID'
-                                                          )
-                                                        : '-'}
+                                                        ? `${new Date(t.resolution_due_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}`
+                                                        : 'Tanpa SLA'}
                                                 </span>
                                             </div>
-                                            <p className="mt-1 truncate text-sm">
+                                            <p className="text-sm leading-snug text-foreground line-clamp-2">
                                                 {t.title}
                                             </p>
-                                            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                                                 <span className="flex items-center gap-1">
-                                                    <UserCircle className="h-3 w-3" />
-                                                    <span className="text-foreground">
-                                                        {t.requester?.name || '-'}
-                                                    </span>
+                                                    <UserCircle className="size-3" />
+                                                    {t.requester?.name || '-'}
                                                 </span>
-                                                {t.assignee ? (
-                                                    <span className="flex items-center gap-1">
-                                                        <span className="text-muted-foreground">
-                                                            →
-                                                        </span>
-                                                        <span className="rounded bg-orange-100 px-1.5 py-0.5 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-                                                            {t.assignee.name}
-                                                        </span>
+                                                {!t.assignee && (
+                                                    <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-destructive">
+                                                        Perlu ditugaskan!
                                                     </span>
-                                                ) : (
-                                                    <span className="rounded bg-red-100 px-1.5 py-0.5 text-red-600 dark:bg-red-900/30 dark:text-red-400">
-                                                        Belum ditugaskan!
+                                                )}
+                                                {t.assignee && (
+                                                    <span className="flex items-center gap-1">
+                                                        <ArrowRight className="size-2 opacity-50" />
+                                                        <span className="rounded bg-primary/10 px-1.5 py-0.5 font-medium text-primary">
+                                                            {t.assignee.name.split(' ')[0]}
+                                                        </span>
                                                     </span>
                                                 )}
                                             </div>
@@ -280,68 +245,63 @@ export default function TabOverview({
                                 ))}
                             </ul>
                         ) : (
-                            <p className="py-8 text-center text-sm text-muted-foreground">
-                                Tidak ada tiket terlambat
-                            </p>
+                            <div className="flex flex-col items-center justify-center py-10 text-center">
+                                <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-primary/10">
+                                    <CheckCircle className="size-5 text-primary" />
+                                </div>
+                                <p className="text-sm font-medium text-primary">Tidak ada tiket terlambat</p>
+                                <p className="mt-0.5 text-xs text-muted-foreground">Semua ticket dalam kondisi baik</p>
+                            </div>
                         )}
                     </CardContent>
                 </Card>
 
                 {/* Tiket Belum Diselesaikan */}
-                <Card className="border-green-200 dark:border-green-800/60">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle>Tiket Belum Diselesaikan</CardTitle>
-                        <Link
-                            href="/tickets"
-                            className="text-sm font-medium text-primary hover:underline"
-                        >
-                            Lihat semua
-                        </Link>
+                <Card className="card-refined overflow-hidden">
+                    <CardHeader className="border-b border-border/50 bg-muted/30 px-5 py-4">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                                <Clock className="size-4 text-primary" />
+                                Belum Selesai
+                            </CardTitle>
+                            {props.unresolvedTickets.length > 0 && (
+                                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
+                                    {props.unresolvedTickets.length}
+                                </Badge>
+                            )}
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        {unresolvedTickets.length > 0 ? (
-                            <ul className="space-y-3">
-                                {unresolvedTickets.map((t) => (
+                    <CardContent className="p-3">
+                        {props.unresolvedTickets.length > 0 ? (
+                            <ul className="space-y-2">
+                                {props.unresolvedTickets.map((t) => (
                                     <li key={t.id}>
                                         <Link
                                             href={`/tickets/${t.id}`}
-                                            className="block rounded-lg border border-green-300/60 bg-green-50/80 p-3 transition-colors hover:bg-green-100/80 dark:border-green-700/50 dark:bg-green-950/30 dark:hover:bg-green-900/40"
+                                            className="group flex flex-col gap-2 rounded-lg border border-border bg-card p-3.5 transition-all duration-150 hover:border-primary/30 hover:bg-primary/[0.02]"
                                         >
                                             <div className="flex items-center justify-between gap-2">
-                                                <span className="font-mono text-sm font-medium">
+                                                <span className="font-mono text-xs font-semibold text-primary">
                                                     {t.ticket_number}
                                                 </span>
-                                                <Badge
-                                                    variant="outline"
-                                                    className={getStatusColor(
-                                                        t.status?.color
-                                                    )}
-                                                >
+                                                <Badge variant="outline" className={`text-[10px] ${getStatusColor(t.status?.color)}`}>
                                                     {t.status?.name}
                                                 </Badge>
                                             </div>
-                                            <p className="mt-1 truncate text-sm">
+                                            <p className="text-sm leading-snug text-foreground line-clamp-2">
                                                 {t.title}
                                             </p>
-                                            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                                                 <span className="flex items-center gap-1">
-                                                    <UserCircle className="h-3 w-3" />
-                                                    <span className="text-foreground">
-                                                        {t.requester?.name || '-'}
-                                                    </span>
+                                                    <UserCircle className="size-3" />
+                                                    {t.requester?.name || '-'}
                                                 </span>
-                                                {t.assignee ? (
+                                                {t.assignee && (
                                                     <span className="flex items-center gap-1">
-                                                        <span className="text-muted-foreground">
-                                                            →
+                                                        <ArrowRight className="size-2 opacity-50" />
+                                                        <span className="rounded bg-primary/10 px-1.5 py-0.5 font-medium text-primary">
+                                                            {t.assignee.name.split(' ')[0]}
                                                         </span>
-                                                        <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
-                                                            {t.assignee.name}
-                                                        </span>
-                                                    </span>
-                                                ) : (
-                                                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                                                        Belum ditugaskan
                                                     </span>
                                                 )}
                                             </div>
@@ -350,9 +310,13 @@ export default function TabOverview({
                                 ))}
                             </ul>
                         ) : (
-                            <p className="py-8 text-center text-sm text-muted-foreground">
-                                Tidak ada tiket belum diselesaikan
-                            </p>
+                            <div className="flex flex-col items-center justify-center py-10 text-center">
+                                <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-primary/10">
+                                    <CheckCircle className="size-5 text-primary" />
+                                </div>
+                                <p className="text-sm font-medium text-primary">Semua ticket selesai</p>
+                                <p className="mt-0.5 text-xs text-muted-foreground">Tidak ada ticket menggantung</p>
+                            </div>
                         )}
                     </CardContent>
                 </Card>
@@ -360,48 +324,32 @@ export default function TabOverview({
 
             {/* Quick Links */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Link
-                    href="/tickets"
-                    className="group flex items-center gap-4 rounded-2xl border border-border/80 bg-card p-5 transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 dark:border-white/10"
-                >
-                    <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
-                        <Ticket className="size-6" />
-                    </div>
-                    <div className="min-w-0">
-                        <span className="font-semibold text-foreground">Tiket</span>
-                    </div>
-                </Link>
-                <Link
-                    href="/pegawai"
-                    className="group flex items-center gap-4 rounded-2xl border border-border/80 bg-card p-5 transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 dark:border-white/10"
-                >
-                    <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
-                        <UserCircle className="size-6" />
-                    </div>
-                    <div className="min-w-0">
-                        <span className="font-semibold text-foreground">
-                            Daftar Pegawai
-                        </span>
-                    </div>
-                </Link>
-                <Link
-                    href="/users"
-                    className="group flex items-center gap-4 rounded-2xl border border-border/80 bg-card p-5 transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 dark:border-white/10"
-                >
-                    <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
-                        <Users className="size-6" />
-                    </div>
-                    <div className="min-w-0">
-                        <span className="font-semibold text-foreground">
-                            Daftar User
-                        </span>
-                    </div>
-                </Link>
+                {[
+                    { href: '/tickets', icon: Ticket, label: 'Tiket', desc: 'Kelola semua ticket' },
+                    { href: '/pegawai', icon: UserCircle, label: 'Daftar Pegawai', desc: 'Data & profil' },
+                    { href: '/users', icon: Users, label: 'Daftar User', desc: 'Kelola akses' },
+                ].map((link) => {
+                    const Icon = link.icon;
+                    return (
+                        <Link
+                            key={link.href}
+                            href={link.href}
+                            className="group card-refined flex items-center gap-4 rounded-xl border border-border p-4"
+                        >
+                            <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-transform duration-200 group-hover:scale-105">
+                                <Icon className="size-5" />
+                            </div>
+                            <div className="min-w-0">
+                                <span className="block font-semibold text-foreground">{link.label}</span>
+                                <span className="block text-xs text-muted-foreground">{link.desc}</span>
+                            </div>
+                            <ArrowRight className="ml-auto size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-1 group-hover:text-primary" />
+                        </Link>
+                    );
+                })}
             </div>
 
-            {/* Floating User Online Status */}
             <UserOnlineStatus />
-
             <QuickCreateButton />
         </div>
     );

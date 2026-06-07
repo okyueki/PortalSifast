@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\EmployeeSalary;
 use App\Services\SyncUserSimrsNikFromEmailService;
-use App\Support\PayrollSlipMath;
+use App\Support\PayrollSlipStructure;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -134,7 +134,7 @@ class EmployeeSalaryController extends Controller
      */
     private function formatSalary(EmployeeSalary $salary): array
     {
-        $gajiBersih = PayrollSlipMath::resolveGajiBersih($salary);
+        $totals = PayrollSlipStructure::computeTotals($salary);
 
         return [
             'id' => $salary->id,
@@ -151,7 +151,10 @@ class EmployeeSalaryController extends Controller
             'pembulatan' => $salary->pembulatan,
             'pajak' => $salary->pajak,
             'zakat' => $salary->zakat,
-            'gaji_bersih' => $gajiBersih,
+            'gaji_bersih' => $totals['gaji_bersih'],
+            'jumlah_gaji' => $totals['jumlah_gaji'],
+            'jumlah_tunjangan' => $totals['jumlah_tunjangan'],
+            'jumlah_potongan' => $totals['jumlah_potongan'],
             'status' => $salary->status,
         ];
     }
@@ -161,9 +164,7 @@ class EmployeeSalaryController extends Controller
      */
     private function formatSalaryDetail(EmployeeSalary $salary): array
     {
-        $gajiBersih = PayrollSlipMath::resolveGajiBersih($salary);
-
-        $masaKerja = $this->calculateMasaKerja($salary);
+        $totals = PayrollSlipStructure::computeTotals($salary);
 
         return [
             'id' => $salary->id,
@@ -180,49 +181,18 @@ class EmployeeSalaryController extends Controller
             'pembulatan' => $salary->pembulatan,
             'pajak' => $salary->pajak,
             'zakat' => $salary->zakat,
-            'gaji_bersih' => $gajiBersih,
-            'terbilang' => $this->terbilang($gajiBersih),
-            'masa_kerja' => $masaKerja,
+            'gaji_bersih' => $totals['gaji_bersih'],
+            'terbilang' => $this->terbilang($totals['gaji_bersih']),
+            'masa_kerja' => $this->calculateMasaKerja($salary),
             'status' => $salary->status,
             'published_at' => $salary->published_at?->toIso8601String(),
             'published_by' => $salary->published_by,
-            // Komponen Pendapatan
-            'gaji_pokok' => $salary->gaji_pokok,
-            'keluarga' => $salary->keluarga,
-            'fungsional' => $salary->fungsional,
-            'struktural' => $salary->struktural,
-            'operasional' => $salary->operasional,
-            'tunj_bpjs_tk' => $salary->tunj_bpjs_tk,
-            'bpjs_kes' => $salary->bpjs_kes,
-            'transport_spj' => $salary->transport_spj,
-            'jm_dokter' => $salary->jm_dokter,
-            'lain_lain' => $salary->lain_lain,
-            'lembur' => $salary->lembur,
-            'on_call' => $salary->on_call,
-            'jkn' => $salary->jkn,
-            'umum' => $salary->umum,
-            'jkn_susulan' => $salary->jkn_susulan,
-            'jkn_susulan_l' => $salary->jkn_susulan_l,
-            // Komponen Potongan
-            'pot_bpjs_tk' => $salary->pot_bpjs_tk,
-            'bpjs_kes_k' => $salary->bpjs_kes_k,
-            'jht_i' => $salary->jht_i,
-            'jp_i' => $salary->jp_i,
-            'bpjs_kes_i' => $salary->bpjs_kes_i,
-            'bpjs_kes_tidak_ditanggung' => $salary->bpjs_kes_tidak_ditanggung,
-            'matan' => $salary->matan,
-            'lazismu' => $salary->lazismu,
-            'obat2an' => $salary->obat2an,
-            'hutang_bpjs' => $salary->hutang_bpjs,
-            'hutang_seragam' => $salary->hutang_seragam,
-            'ikkm' => $salary->ikkm,
-            'lain_pot' => $salary->lain_pot,
-            // Total dari CSV
-            'jumlah_tunjangan' => $salary->jumlah_tunjangan,
-            'jumlah' => $salary->jumlah,
-            'jumlah_pot' => $salary->jumlah_pot,
-            // Raw data (semua kolom CSV asli)
-            'raw_row' => $salary->raw_row,
+            // Total resmi untuk mobile — jangan hitung ulang di frontend
+            'totals' => $totals,
+            // Struktur slip siap render (section + label + amount)
+            'slip_sections' => PayrollSlipStructure::buildSections($salary),
+            // Komponen flat (backward compatible)
+            'components' => PayrollSlipStructure::componentsPayload($salary),
         ];
     }
 

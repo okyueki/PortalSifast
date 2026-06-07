@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\Api\DashboardActivityController;
+use App\Http\Controllers\Api\DashboardAnalyticsController;
+use App\Http\Controllers\Api\DashboardNotificationController;
+use App\Http\Controllers\Api\DashboardTextAnalyticsController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DailyActivityReportController;
 use App\Http\Controllers\DashboardController;
@@ -26,7 +30,9 @@ use App\Http\Controllers\TicketAttachmentController;
 use App\Http\Controllers\TicketCollaboratorController;
 use App\Http\Controllers\TicketCommentController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\TicketDocumentationController;
 use App\Http\Controllers\TicketIssueController;
+use App\Http\Controllers\TicketRecommendationController;
 use App\Http\Controllers\TicketSparepartItemController;
 use App\Http\Controllers\TicketStatusController;
 use App\Http\Controllers\TicketVendorCostController;
@@ -48,6 +54,15 @@ Route::get('/', function () {
 Route::get('dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
+
+// Dashboard API endpoints (for Inertia frontend tabs)
+Route::prefix('api/dashboard')->middleware(['auth', 'verified'])->group(function () {
+    Route::get('/analytics', [DashboardAnalyticsController::class, 'index']);
+    Route::get('/activities', [DashboardActivityController::class, 'index']);
+    Route::get('/notifications', [DashboardNotificationController::class, 'index']);
+    Route::post('/notifications/mark-read', [DashboardNotificationController::class, 'markAsRead']);
+    Route::get('/text-analytics', [DashboardTextAnalyticsController::class, 'index']);
+});
 
 // Broadcast auth untuk private channel (chat)
 Broadcast::routes(['middleware' => ['web', 'auth']]);
@@ -106,6 +121,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('tickets/{ticket}/confirm', [TicketController::class, 'confirm'])->name('tickets.confirm');
     Route::post('tickets/{ticket}/complain', [TicketController::class, 'complain'])->name('tickets.complain');
     Route::post('tickets/{ticket}/publish', [TicketController::class, 'publish'])->name('tickets.publish');
+
+    // Bantuan AI — rekomendasi solusi
+    Route::get('tickets/{ticket}/recommendation', TicketRecommendationController::class)->name('tickets.recommendation');
+    // Generate dokumen resolution
+    Route::get('tickets/{ticket}/documentation', TicketDocumentationController::class)->name('tickets.documentation');
 
     // Ticket issues
     Route::post('tickets/{ticket}/issues', [TicketIssueController::class, 'store'])->name('tickets.issues.store');

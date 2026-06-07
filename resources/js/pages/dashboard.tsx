@@ -8,6 +8,7 @@ import type { BreadcrumbItem } from '@/types';
 import type { Ticket as TicketType } from '@/types/ticket';
 import TabActivity from './dashboard/TabActivity';
 import TabAnalytics from './dashboard/TabAnalytics';
+import TabAnalisa from './dashboard/TabAnalisa';
 import TabOverview from './dashboard/TabOverview';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -24,6 +25,32 @@ type DashboardStats = {
     by_department: Record<string, number>;
 };
 
+type AnalyticsData = {
+    ticket_volume: {
+        daily: Array<{ date: string; count: number }>;
+        weekly: Array<{ week: string; count: number }>;
+        monthly: Array<{ month: string; count: number }>;
+    };
+    by_department: Array<{
+        dep_id: number;
+        name: string;
+        count: number;
+        sla_rate: number;
+    }>;
+    by_user: Array<{
+        user_id: number;
+        name: string;
+        created: number;
+        resolved: number;
+    }>;
+    summary: {
+        total_tickets: number;
+        vs_previous: number;
+        avg_resolution_hours: number;
+        sla_compliance: number;
+    };
+};
+
 type Props = {
     stats: DashboardStats;
     recentTickets: TicketType[];
@@ -38,6 +65,7 @@ type Props = {
             avatar_url?: string;
         }>;
     };
+    analytics: AnalyticsData;
 };
 
 export default function Dashboard({
@@ -45,6 +73,7 @@ export default function Dashboard({
     recentTickets,
     overdueTickets,
     unresolvedTickets,
+    analytics,
 }: Props) {
     const [activeTab, setActiveTab] = useState('overview');
     const [notificationCount, setNotificationCount] = useState(0);
@@ -74,6 +103,7 @@ export default function Dashboard({
                                 </Badge>
                             )}
                         </TabsTrigger>
+                        <TabsTrigger value="analisa">Analisa</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="overview">
@@ -86,13 +116,17 @@ export default function Dashboard({
                     </TabsContent>
 
                     <TabsContent value="analytics">
-                        <TabAnalytics />
+                        <TabAnalytics initialData={analytics} />
                     </TabsContent>
 
                     <TabsContent value="activity">
                         <TabActivity
                             onNotificationCountChange={setNotificationCount}
                         />
+                    </TabsContent>
+
+                    <TabsContent value="analisa">
+                        <TabAnalisa />
                     </TabsContent>
                 </Tabs>
             </div>

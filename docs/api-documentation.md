@@ -390,14 +390,17 @@ curl -X GET “https://portalsifast.rsaisyiyahsitifatimah.com/api/sifast/payroll
 }
 ```
 
-#### Catatan Penting untuk Frontend
+#### Catatan Penting untuk Frontend Mobile
 
-1. **Gunakan kolom langsung**, bukan hitung ulang dari komponen
-2. **Jumlah Tunjangan**: pakai `jumlah_tunjangan`, bukan jumlah komponen
-3. **Jumlah Gaji**: pakai `jumlah`, bukan penjumlahan manual
-4. **Jumlah Potongan**: pakai `jumlah_pot`
-5. **Gaji Bersih**: pakai `pembulatan` atau `gaji_bersih`
-6. **Terbilang**: dari field `terbilang` (sudah di-generate backend)
+> **Panduan lengkap tampilan slip mobile (selaras dengan web):** [PAYROLL-MOBILE-SLIP.md](./PAYROLL-MOBILE-SLIP.md)
+
+1. **Render dari `slip_sections` + `totals`** — jangan hitung ulang di frontend
+2. **Jumlah Tunjangan** = section 2 (Tunjangan) + section 3 (Lain-Lain); pakai `totals.jumlah_tunjangan`
+3. **Jumlah Gaji** = Kehadiran + Jumlah Tunjangan; pakai `totals.jumlah_gaji`
+4. **Jumlah Potongan** = pakai `totals.jumlah_potongan`
+5. **Gaji Bersih** = pakai `totals.gaji_bersih` atau `gaji_bersih`
+6. **Terbilang** = field `terbilang`
+7. Field `components` hanya untuk backward compat; **`raw_row` tidak lagi dikirim** di API detail
 
 #### Response Error `403 Forbidden` (belum publish)
 ```json

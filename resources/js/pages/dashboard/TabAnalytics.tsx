@@ -12,6 +12,8 @@ import {
     ResponsiveContainer,
     Cell,
     Legend,
+    PieChart,
+    Pie,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -35,6 +37,8 @@ type AnalyticsData = {
         created: number;
         resolved: number;
     }>;
+    by_category: Array<{ category_id: number; name: string; count: number; percentage: number }>;
+    by_type: Array<{ type_id: number; name: string; count: number; percentage: number }>;
     summary: {
         total_tickets: number;
         vs_previous: number;
@@ -49,18 +53,29 @@ function getSlaColor(rate: number): string {
     return '#ef4444';
 }
 
-export default function TabAnalytics() {
+type Props = {
+    initialData?: AnalyticsData;
+};
+
+export default function TabAnalytics({ initialData }: Props) {
     const [timeRange, setTimeRange] = useState<TimeRange>('weekly');
-    const [data, setData] = useState<AnalyticsData | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [data, setData] = useState<AnalyticsData | null>(initialData || null);
+    const [loading, setLoading] = useState(!initialData);
+
+    const CHART_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff729f', '#00bcd4', '#ff9800', '#9c27b0', '#607d8b'];
 
     useEffect(() => {
+        if (initialData) {
+            setData(initialData);
+            setLoading(false);
+            return;
+        }
         fetch('/api/dashboard/analytics')
             .then((res) => res.json())
             .then(setData)
             .catch(console.error)
             .finally(() => setLoading(false));
-    }, []);
+    }, [initialData]);
 
     if (loading)
         return (
@@ -265,6 +280,95 @@ export default function TabAnalytics() {
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
+
+                {/* Breakdown Charts */}
+                <div className="grid gap-6 lg:grid-cols-2">
+                    {/* Tiket per Kategori */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Tiket per Kategori</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {data.by_category && data.by_category.length > 0 ? (
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <PieChart>
+                                        <Pie
+                                            data={data.by_category}
+                                            dataKey="count"
+                                            nameKey="name"
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={100}
+                                            paddingAngle={2}
+                                        >
+                                            {data.by_category.map((_, index) => (
+                                                <Cell
+                                                    key={`cat-${index}`}
+                                                    fill={CHART_COLORS[index % CHART_COLORS.length]}
+                                                />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            formatter={(value: number, name: string) => [
+                                                `${value} tiket`,
+                                                name,
+                                            ]}
+                                        />
+                                        <Legend />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <p className="py-8 text-center text-muted-foreground">
+                                    Belum ada data kategori
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Tiket per Jenis */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Tiket per Jenis</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {data.by_type && data.by_type.length > 0 ? (
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <PieChart>
+                                        <Pie
+                                            data={data.by_type}
+                                            dataKey="count"
+                                            nameKey="name"
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={100}
+                                            paddingAngle={2}
+                                        >
+                                            {data.by_type.map((_, index) => (
+                                                <Cell
+                                                    key={`type-${index}`}
+                                                    fill={CHART_COLORS[index % CHART_COLORS.length]}
+                                                />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            formatter={(value: number, name: string) => [
+                                                `${value} tiket`,
+                                                name,
+                                            ]}
+                                        />
+                                        <Legend />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <p className="py-8 text-center text-muted-foreground">
+                                    Belum ada data jenis tiket
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </div>
     );

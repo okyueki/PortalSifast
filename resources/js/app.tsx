@@ -4,8 +4,27 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '../css/app.css';
 import { initializeTheme } from './hooks/use-appearance';
+import { initializeColorTheme } from './hooks/use-color-theme';
 import './echo.js';
 import { configureEcho } from '@laravel/echo-react';
+
+// ─── Google Fonts: Plus Jakarta Sans ──────────────────────────────────────────
+const fonts = document.createElement('link');
+fonts.rel = 'preconnect';
+fonts.href = 'https://fonts.googleapis.com';
+document.head.appendChild(fonts);
+
+const fontsGstatic = document.createElement('link');
+fontsGstatic.rel = 'preconnect';
+fontsGstatic.href = 'https://fonts.gstatic.com';
+fontsGstatic.crossOrigin = 'anonymous';
+document.head.appendChild(fontsGstatic);
+
+const fontsSheet = document.createElement('link');
+fontsSheet.rel = 'stylesheet';
+fontsSheet.href =
+    'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap';
+document.head.appendChild(fontsSheet);
 
 configureEcho({
     broadcaster: 'reverb',
@@ -38,9 +57,11 @@ createInertiaApp({
         );
     },
     progress: {
-        color: '#2563eb',
+        color: '#4361ee',
     },
 });
 
 // This will set light / dark mode on load...
 initializeTheme();
+// Initialize color theme customizer...
+initializeColorTheme();
