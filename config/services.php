@@ -46,4 +46,9 @@ return [
         'credentials' => storage_path('app/firebase-credentials.json'),
     ],
 
+    'sikat' => [
+        'base_url' => env('SIKAT_BASE_URL', 'https://sikat.rsaisyiyahsitifatimah.com'),
+        'sso_secret' => env('PORTALSIFAST_SIKAT_SSO_SECRET'),
+    ],
+
 ];

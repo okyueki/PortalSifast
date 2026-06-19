@@ -11,6 +11,8 @@ use App\Http\Controllers\DepartmentReportController;
 use App\Http\Controllers\DepartmentReportPrintController;
 use App\Http\Controllers\EmergencyReportWebController;
 use App\Http\Controllers\EmployeeSalaryWebImportController;
+use App\Http\Controllers\Integrations\SikatInboundSsoController;
+use App\Http\Controllers\Integrations\SikatSsoRedirectController;
 use App\Http\Controllers\InventarisBarangController;
 use App\Http\Controllers\InventarisController;
 use App\Http\Controllers\MutuCategoryController;
@@ -55,6 +57,9 @@ Route::get('dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::get('sso/sikat', SikatInboundSsoController::class)
+    ->name('sso.sikat');
+
 // Dashboard API endpoints (for Inertia frontend tabs)
 Route::prefix('api/dashboard')->middleware(['auth', 'verified'])->group(function () {
     Route::get('/analytics', [DashboardAnalyticsController::class, 'index']);
@@ -68,6 +73,9 @@ Route::prefix('api/dashboard')->middleware(['auth', 'verified'])->group(function
 Broadcast::routes(['middleware' => ['web', 'auth']]);
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('integrations/sikat/go', SikatSsoRedirectController::class)
+        ->name('integrations.sikat.go');
+
     Route::get('users', [UsersController::class, 'index'])->name('users.index');
     Route::get('users/create', [UsersController::class, 'create'])->name('users.create');
     Route::post('users', [UsersController::class, 'store'])->name('users.store');

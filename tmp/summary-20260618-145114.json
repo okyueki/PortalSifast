@@ -1,0 +1,4 @@
+{
+  "summary": "User asked if reverse SSO SIKAT → Portal Sifast is possible. Explained yes—same HMAC token pattern can be mirrored; only Portal→SIKAT is implemented today. SIKAT navbar link to /dashboard still requires Portal login unless Portal adds GET /sso/sikat endpoint. Outlined flow, mapping NIK→User.simrs_nik, security notes, and when bidirectional SSO is worth building.",
+  "current_status": "Unidirectional SSO (Portal→SIKAT) implemented in code. Reverse SSO (SIKAT→Portal) feasible but not built; docs FAQ already notes separate sessions on logout."
+}

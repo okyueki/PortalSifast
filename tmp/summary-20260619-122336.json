@@ -1,0 +1,4 @@
+{
+  "summary": "Meninjau dokumen Bahan_Diskusi_Modul_TataNaskah.md yang sudah dirapikan dari berbagai sumber — dinilai sudah sangat sesuai sebagai masterplan (pedoman RS'ASF, batas SIKAT, counter, workflow, skema DB, Hijriyah). Instance Stirling-PDF v2.13.0 di 192.168.10.44:8888 diverifikasi; endpoint relevan dipetakan. Dokumen diperbarui: keputusan pakai Stirling-PDF, §9.3 direvisi, Lampiran C endpoint mapping per fase, keputusan §12 #12, §13 disesuaikan.",
+  "current_status": "Masterplan modul Tata Naskah siap bahan diskusi lanjutan. Stirling-PDF dipilih untuk PDF processing; fase 1 butuh 6 endpoint utama (get-pdf-info, add-stamp x3, add-watermark, status). Penomoran tetap di Portal DocumentNumberService. Menunggu: koordinat stamp per jenis naskah, API key ke .env Portal, keputusan §13 yang tersisa."
+}

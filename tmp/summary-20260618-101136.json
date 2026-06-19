@@ -1,0 +1,4 @@
+{
+  "summary": "User corrected doc naming: SIKAT_V2_INTEGRASI_SURAT_MENYURAT was a typo; correct main guide is INTEGRASI_WITH_SIKAT.md. Fixed cross-references in both integration docs: hierarchy clarified (WITH_SIKAT=main guide, SIKAT_SSO=technical spec), removed Saran_tim_sikat.md and .mdd typos, fixed wrong 'pendekatan lama' label on INTEGRASI_WITH_SIKAT, updated implementation status/checklists. Confirmed Portal code already implements SSO token approach per INTEGRASI_WITH_SIKAT.md—not shared session.",
+  "current_status": "Documentation naming and cross-references corrected. SSO integration code in Portal is aligned with INTEGRASI_WITH_SIKAT.md (token+NIK). Awaiting .env secret and staging E2E test."
+}

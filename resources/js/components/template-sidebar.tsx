@@ -23,7 +23,9 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { NavModuleItemLink } from '@/components/nav-module-item-link';
 import { useCurrentUrl } from '@/hooks/use-current-url';
+import { buildSikatNavGroup } from '@/lib/build-sikat-nav-group';
 import { buildSimmutuNavGroup } from '@/lib/build-simmutu-nav-group';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -37,6 +39,7 @@ type NavItem = {
     href: string;
     icon: LucideIcon;
     isActive: (path: string) => boolean;
+    fullPage?: boolean;
 };
 
 type NavGroup = {
@@ -53,6 +56,9 @@ type SharedPageProps = {
             can_view?: boolean;
             can_manage?: boolean;
             can_input?: boolean;
+        };
+        sikat?: {
+            enabled?: boolean;
         };
     };
 };
@@ -265,12 +271,16 @@ export function TemplateSidebar() {
     const canAccessPayroll = Boolean(permissions?.can_access_payroll);
     const visibleModuleGroups = useMemo(() => {
         const base = moduleGroups.filter((group) => group.id !== 'payroll' || canAccessPayroll);
+        const sikatGroup = buildSikatNavGroup(permissions?.sikat?.enabled);
+        if (sikatGroup) {
+            base.push(sikatGroup);
+        }
         const simmutuGroup = buildSimmutuNavGroup(permissions?.simmutu);
         if (simmutuGroup) {
             base.push(simmutuGroup);
         }
         return base;
-    }, [canAccessPayroll, permissions?.simmutu]);
+    }, [canAccessPayroll, permissions?.simmutu, permissions?.sikat?.enabled]);
     const activeModuleIds = useMemo(
         () =>
             visibleModuleGroups
@@ -370,20 +380,14 @@ export function TemplateSidebar() {
                                         {group.items.map((item) => {
                                             const isItemActive = item.isActive(currentUrl);
                                             return (
-                                                <Link
+                                                <NavModuleItemLink
                                                     key={item.id}
                                                     href={item.href}
-                                                    prefetch
-                                                    className={cn(
-                                                        'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                                                        isItemActive
-                                                            ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-                                                            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground',
-                                                    )}
-                                                >
-                                                    <item.icon className="h-4 w-4 shrink-0" />
-                                                    {item.label}
-                                                </Link>
+                                                    icon={item.icon}
+                                                    label={item.label}
+                                                    isActive={isItemActive}
+                                                    fullPage={item.fullPage}
+                                                />
                                             );
                                         })}
                                     </div>

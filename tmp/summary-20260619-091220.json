@@ -1,0 +1,4 @@
+{
+  "summary": "Menjelaskan perbedaan penomoran tiket vs surat/dokumen resmi. Tiket memakai pola TKT-YYYYMMDD-XXXX tanpa tabel counter (scan LIKE, scope global, reset harian). Surat/dokumen butuh scope per jenis+unit+tahun, anti-duplikat kuat, format formal. Tiga opsi dibandingkan: reuse pola tiket, tabel counter_nomor_dokumen khusus, atau generic number_sequences. Rekomendasi: tiket tetap, surat operasional tetap SIKAT, modul Tata Naskah (SOP/SK) pakai tabel counter baru dengan transaction+lock.",
+  "current_status": "Modul Tata Naskah masih tahap diskusi. Dokumen Bahan_Diskusi_Modul_TataNaskah.md sudah ada; keputusan penomoran belum final — menunggu format resmi RS dan konfirmasi batas dengan SIKAT."
+}

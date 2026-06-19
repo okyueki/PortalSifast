@@ -1,0 +1,4 @@
+{
+  "summary": "Implemented Portal Sifast side of SIKAT SSO integration after SIKAT team completed their endpoint. Added SikatSsoTokenService, SikatSsoRedirectController, route GET /integrations/sikat/go, config (services.sikat + config/sikat.php), sidebar/mobile Surat Menyurat menu via sikatSuratNav.ts, NavModuleItemLink for full-page SSO links, HandleInertia sikat.enabled permission, 14 passing feature tests, updated INTEGRASI_SIKAT_SSO.md checklist. User must set PORTALSIFAST_SIKAT_SSO_SECRET in .env (same as SIKAT) to activate menu and redirects.",
+  "current_status": "SIKAT SSO integration complete on both sides in code. Production activation requires PORTALSIFAST_SIKAT_SSO_SECRET + SIKAT_BASE_URL in Portal .env, npm build for frontend menu, and end-to-end staging test with real user NIK mapped in SIKAT."
+}

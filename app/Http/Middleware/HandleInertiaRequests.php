@@ -50,6 +50,9 @@ class HandleInertiaRequests extends Middleware
                     'can_input' => $request->user()?->canRecordMutuRealisation() ?? false,
                     'can_manage_user_flags' => $request->user()?->canManageMutuAccess() ?? false,
                 ],
+                'sikat' => [
+                    'enabled' => filled(config('services.sikat.sso_secret')),
+                ],
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [

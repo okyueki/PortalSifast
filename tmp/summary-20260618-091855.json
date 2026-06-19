@@ -1,0 +1,4 @@
+{
+  "summary": "Created docs/INTEGRASI_SIKAT_SSO.md documenting phase-1 SIKAT integration via signed NIK SSO token handoff (keep Portal email login, no shared session/DB). Covers architecture, token contract, Portal routes/env/menu spec, SIKAT endpoint pseudocode, security, testing checklist, troubleshooting, and team coordination. Updated INTEGRASI_WITH_SIKAT.md header to point to new doc as recommended approach.",
+  "current_status": "SIKAT SSO integration fully documented but not yet implemented in code. INTEGRASI_SIKAT_SSO.md is the primary spec for both Portal and SIKAT teams; legacy shared-session doc retained as alternative."
+}

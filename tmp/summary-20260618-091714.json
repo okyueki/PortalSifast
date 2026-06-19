@@ -1,0 +1,4 @@
+{
+  "summary": "User wants simpler SIKAT integration: keep existing Portal Sifast email login, ignore Dashboard, use NIK as identity bridge. Recommended SSO handoff token approach instead of shared session (no APP_KEY/DB/cookie alignment). Portal adds redirect route + menu links; SIKAT builds one /sso/portalsifast endpoint to validate token and Auth::login by NIK. Provided contract details and checklist for SIKAT team.",
+  "current_status": "SIKAT integration not implemented. User prefers minimal phase-1 via signed NIK token handoff while Portal keeps standalone auth on portalsifast domain. Awaiting SIKAT team to implement SSO receiver endpoint."
+}

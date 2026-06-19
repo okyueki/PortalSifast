@@ -1,0 +1,4 @@
+{
+  "summary": "Implemented reverse SSO SIKAT→Portal: GET /sso/sikat endpoint, SikatInboundSsoController, validateToken with expiry+nonce cache, PortalRedirectPath whitelist, auto-login via simrs_nik/ResolveUserByNikService. Created docs/SIKAT_DEVELOPER_SSO_KE_PORTAL.md for SIKAT team with PHP service sample, navbar Blade example, testing checklist. Updated INTEGRASI_WITH_SIKAT.md and INTEGRASI_SIKAT_SSO.md. 23 SSO tests passing.",
+  "current_status": "Bidirectional SSO: Portal→SIKAT (integrations/sikat/go) and SIKAT→Portal (/sso/sikat) implemented on Portal side. SIKAT team needs PortalsifastSsoOutboundService + navbar link per SIKAT_DEVELOPER_SSO_KE_PORTAL.md. Requires shared PORTALSIFAST_SIKAT_SSO_SECRET in both .env files."
+}
